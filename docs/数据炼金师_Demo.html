@@ -1,0 +1,1878 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>数据炼金师 Demo｜把脏乱数据炼成可交付业务结果</title>
+    <meta
+      name="description"
+      content="数据炼金师交互式 Demo：上传文件、输入业务目标，Agent 自动完成数据理解、清洗匹配、异常识别和结果交付。AI 负责理解，确定性引擎负责执行。"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #060910;
+        --bg-2: #0d1422;
+        --panel: rgba(17, 25, 41, 0.78);
+        --panel-2: rgba(255, 255, 255, 0.07);
+        --ink: #eef5ff;
+        --muted: #9da8ba;
+        --soft: #ccd6e6;
+        --line: rgba(238, 245, 255, 0.14);
+        --gold: #f3c55f;
+        --gold-2: #ffdd8b;
+        --cyan: #48e4d2;
+        --blue: #6ba8ff;
+        --green: #73e2a7;
+        --red: #ff7b7b;
+        --paper: #f7f0dc;
+        --paper-ink: #141923;
+        --shadow: 0 28px 90px rgba(0, 0, 0, 0.46);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 10% 8%, rgba(107, 168, 255, 0.22), transparent 32%),
+          radial-gradient(circle at 92% 10%, rgba(243, 197, 95, 0.2), transparent 28%),
+          radial-gradient(circle at 74% 80%, rgba(72, 228, 210, 0.14), transparent 30%),
+          linear-gradient(135deg, var(--bg) 0%, #0b1320 48%, #07111b 100%);
+        color: var(--ink);
+        font-family:
+          "Avenir Next",
+          "PingFang SC",
+          "Hiragino Sans GB",
+          "Microsoft YaHei",
+          sans-serif;
+        margin: 0;
+        min-height: 100vh;
+      }
+
+      body::before {
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+        background-size: 42px 42px;
+        content: "";
+        inset: 0;
+        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.78), transparent 78%);
+        pointer-events: none;
+        position: fixed;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .page {
+        margin: 0 auto;
+        max-width: 1260px;
+        padding: 28px 22px 56px;
+        position: relative;
+      }
+
+      .topbar {
+        align-items: center;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        margin-bottom: 22px;
+      }
+
+      .brand {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+      }
+
+      .brand-mark {
+        align-items: center;
+        background: linear-gradient(135deg, rgba(243, 197, 95, 0.96), rgba(72, 228, 210, 0.88));
+        border-radius: 16px;
+        color: #08101a;
+        display: flex;
+        font-size: 22px;
+        font-weight: 1000;
+        height: 44px;
+        justify-content: center;
+        width: 44px;
+      }
+
+      .brand strong {
+        display: block;
+        font-size: 17px;
+      }
+
+      .brand span,
+      .top-note {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .top-note {
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 9px 13px;
+      }
+
+      /* ---------- HERO ---------- */
+      .hero {
+        background:
+          linear-gradient(135deg, rgba(15, 23, 38, 0.96), rgba(11, 30, 52, 0.82)),
+          radial-gradient(circle at 84% 16%, rgba(243, 197, 95, 0.2), transparent 28%);
+        border: 1px solid var(--line);
+        border-radius: 34px;
+        box-shadow: var(--shadow);
+        display: grid;
+        gap: 30px;
+        grid-template-columns: minmax(0, 1.04fr) minmax(380px, 0.8fr);
+        overflow: hidden;
+        padding: 42px;
+        position: relative;
+      }
+
+      .hero::after {
+        border: 1px solid rgba(243, 197, 95, 0.34);
+        border-radius: 50%;
+        content: "";
+        height: 520px;
+        position: absolute;
+        right: -240px;
+        top: -260px;
+        width: 520px;
+      }
+
+      .eyebrow {
+        color: var(--cyan);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        margin: 0 0 18px;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        font-family: Georgia, "Songti SC", serif;
+        font-size: clamp(54px, 9vw, 112px);
+        letter-spacing: -0.08em;
+        line-height: 0.88;
+        margin: 0;
+      }
+
+      h1 span {
+        color: var(--gold);
+        display: block;
+      }
+
+      .headline {
+        color: #e7f0ff;
+        font-size: clamp(21px, 3vw, 32px);
+        font-weight: 900;
+        line-height: 1.32;
+        margin: 24px 0 0;
+        max-width: 760px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 17px;
+        line-height: 1.8;
+        margin: 18px 0 0;
+        max-width: 780px;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .hero-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 22px;
+      }
+
+      .hero-tag {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--soft);
+        font-size: 13px;
+        padding: 7px 12px;
+      }
+
+      .hero-tag b {
+        color: var(--gold-2);
+      }
+
+      .primary-btn,
+      .secondary-btn {
+        border: 0;
+        border-radius: 999px;
+        font-weight: 900;
+        padding: 13px 18px;
+        transition:
+          transform 180ms ease,
+          box-shadow 180ms ease,
+          background 180ms ease;
+      }
+
+      .primary-btn {
+        background: linear-gradient(135deg, var(--gold), var(--gold-2));
+        box-shadow: 0 18px 36px rgba(243, 197, 95, 0.22);
+        color: #101827;
+      }
+
+      .secondary-btn {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--line);
+        color: var(--ink);
+      }
+
+      .primary-btn:hover,
+      .secondary-btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .console-card {
+        background: var(--paper);
+        border-radius: 28px;
+        color: var(--paper-ink);
+        padding: 22px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .console-head {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .traffic {
+        display: flex;
+        gap: 7px;
+      }
+
+      .traffic i {
+        border-radius: 50%;
+        display: block;
+        height: 11px;
+        width: 11px;
+      }
+
+      .traffic i:nth-child(1) {
+        background: #ff6b6b;
+      }
+
+      .traffic i:nth-child(2) {
+        background: #ffd166;
+      }
+
+      .traffic i:nth-child(3) {
+        background: #73e2a7;
+      }
+
+      .mini-flow {
+        display: grid;
+        gap: 10px;
+      }
+
+      .mini-step {
+        align-items: center;
+        background: #fffaf0;
+        border: 1px solid rgba(20, 25, 35, 0.1);
+        border-radius: 14px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 38px 1fr auto;
+        padding: 12px;
+      }
+
+      .mini-step b {
+        align-items: center;
+        background: #101827;
+        border-radius: 12px;
+        color: var(--gold);
+        display: flex;
+        height: 38px;
+        justify-content: center;
+      }
+
+      .mini-step span {
+        color: #111827;
+        font-weight: 900;
+      }
+
+      .mini-step small {
+        color: #657086;
+        display: block;
+        line-height: 1.5;
+        margin-top: 3px;
+      }
+
+      .mini-step em {
+        background: #e9f7ef;
+        border-radius: 999px;
+        color: #127a49;
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 900;
+        padding: 6px 9px;
+      }
+
+      /* ---------- SECTION ---------- */
+      .section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 32px;
+        box-shadow: 0 18px 55px rgba(0, 0, 0, 0.22);
+        margin-top: 24px;
+        padding: 30px;
+      }
+
+      .section-head {
+        align-items: flex-end;
+        display: flex;
+        gap: 18px;
+        justify-content: space-between;
+        margin-bottom: 22px;
+      }
+
+      .section-head .head-index {
+        color: var(--cyan);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        margin: 0 0 8px;
+        text-transform: uppercase;
+      }
+
+      .section-head h2 {
+        font-size: clamp(25px, 4vw, 38px);
+        letter-spacing: -0.04em;
+        margin: 0;
+      }
+
+      .section-head p {
+        color: var(--muted);
+        line-height: 1.7;
+        margin: 0;
+        max-width: 560px;
+      }
+
+      /* ---------- CAPABILITY CARDS ---------- */
+      .cap-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .cap-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        overflow: hidden;
+        padding: 22px;
+        position: relative;
+        transition:
+          transform 200ms ease,
+          border-color 200ms ease;
+      }
+
+      .cap-card:hover {
+        border-color: rgba(243, 197, 95, 0.4);
+        transform: translateY(-4px);
+      }
+
+      .cap-icon {
+        align-items: center;
+        background: linear-gradient(135deg, rgba(243, 197, 95, 0.2), rgba(72, 228, 210, 0.14));
+        border: 1px solid rgba(243, 197, 95, 0.3);
+        border-radius: 14px;
+        display: flex;
+        font-size: 22px;
+        height: 46px;
+        justify-content: center;
+        margin-bottom: 16px;
+        width: 46px;
+      }
+
+      .cap-card h3 {
+        font-size: 18px;
+        margin: 0 0 10px;
+      }
+
+      .cap-card p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+        margin: 0;
+      }
+
+      .cap-card .cap-tag {
+        color: var(--gold-2);
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 900;
+        margin-top: 14px;
+      }
+
+      /* ---------- ARCHITECTURE ---------- */
+      .arch {
+        align-items: stretch;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: 1fr 60px 1fr;
+      }
+
+      .arch-col {
+        border-radius: 24px;
+        padding: 24px;
+      }
+
+      .arch-col.brain {
+        background: linear-gradient(160deg, rgba(107, 168, 255, 0.16), rgba(72, 228, 210, 0.08));
+        border: 1px solid rgba(107, 168, 255, 0.32);
+      }
+
+      .arch-col.engine {
+        background: linear-gradient(160deg, rgba(243, 197, 95, 0.16), rgba(243, 197, 95, 0.05));
+        border: 1px solid rgba(243, 197, 95, 0.34);
+      }
+
+      .arch-col .arch-kicker {
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .arch-col.brain .arch-kicker {
+        color: var(--blue);
+      }
+
+      .arch-col.engine .arch-kicker {
+        color: var(--gold-2);
+      }
+
+      .arch-col h3 {
+        font-size: 21px;
+        margin: 8px 0 16px;
+      }
+
+      .arch-col ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .arch-col li {
+        color: var(--soft);
+        font-size: 14px;
+        line-height: 1.6;
+        padding: 8px 0 8px 24px;
+        position: relative;
+      }
+
+      .arch-col li::before {
+        content: "▸";
+        left: 4px;
+        position: absolute;
+      }
+
+      .arch-col.brain li::before {
+        color: var(--blue);
+      }
+
+      .arch-col.engine li::before {
+        color: var(--gold);
+      }
+
+      .arch-bridge {
+        align-items: center;
+        color: var(--gold);
+        display: flex;
+        font-size: 34px;
+        font-weight: 900;
+        justify-content: center;
+      }
+
+      .arch-note {
+        background: rgba(115, 226, 167, 0.08);
+        border: 1px solid rgba(115, 226, 167, 0.28);
+        border-radius: 16px;
+        color: #bdf3d3;
+        font-size: 14px;
+        line-height: 1.7;
+        margin-top: 18px;
+        padding: 14px 18px;
+      }
+
+      /* ---------- WORKBENCH ---------- */
+      .scenario-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-bottom: 18px;
+      }
+
+      .scenario-btn {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        color: var(--ink);
+        padding: 18px;
+        text-align: left;
+        transition: border-color 180ms ease, background 180ms ease;
+      }
+
+      .scenario-btn.active {
+        background: rgba(243, 197, 95, 0.14);
+        border-color: rgba(243, 197, 95, 0.42);
+      }
+
+      .scenario-btn strong {
+        align-items: center;
+        display: flex;
+        font-size: 18px;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .scenario-btn span {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .workbench {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
+      }
+
+      .panel {
+        background: rgba(255, 255, 255, 0.055);
+        border: 1px solid var(--line);
+        border-radius: 26px;
+        padding: 20px;
+      }
+
+      .panel h3 {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        margin: 0 0 14px;
+      }
+
+      .step-badge {
+        align-items: center;
+        background: rgba(243, 197, 95, 0.16);
+        border-radius: 8px;
+        color: var(--gold-2);
+        display: inline-flex;
+        font-size: 13px;
+        font-weight: 900;
+        height: 24px;
+        justify-content: center;
+        width: 24px;
+      }
+
+      .upload-zone {
+        border: 1px dashed rgba(243, 197, 95, 0.5);
+        border-radius: 20px;
+        padding: 18px;
+      }
+
+      .upload-zone label {
+        align-items: center;
+        color: var(--gold-2);
+        cursor: pointer;
+        display: flex;
+        font-weight: 900;
+        gap: 10px;
+      }
+
+      .upload-zone input {
+        display: none;
+      }
+
+      .file-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .file-item {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 52px minmax(0, 1fr);
+        padding: 11px;
+      }
+
+      .file-type {
+        background: #f7f0dc;
+        border-radius: 12px;
+        color: #2557ff;
+        font-size: 12px;
+        font-weight: 1000;
+        padding: 8px 6px;
+        text-align: center;
+      }
+
+      .file-item strong {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .file-item span {
+        color: var(--muted);
+        display: block;
+        font-size: 13px;
+        margin-top: 3px;
+      }
+
+      textarea {
+        background: rgba(4, 8, 14, 0.64);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        color: var(--ink);
+        line-height: 1.7;
+        min-height: 120px;
+        outline: none;
+        padding: 16px;
+        resize: vertical;
+        width: 100%;
+      }
+
+      textarea:focus {
+        border-color: rgba(243, 197, 95, 0.62);
+        box-shadow: 0 0 0 4px rgba(243, 197, 95, 0.08);
+      }
+
+      .run-row {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .progress-wrap {
+        margin-top: 18px;
+      }
+
+      .progress-top {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+
+      .progress-top strong {
+        color: var(--gold-2);
+      }
+
+      .progress-bar {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        height: 12px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        background: linear-gradient(90deg, var(--gold), var(--cyan));
+        border-radius: inherit;
+        height: 100%;
+        transition: width 480ms ease;
+        width: 0;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .timeline-item {
+        align-items: start;
+        background: rgba(255, 255, 255, 0.045);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 34px minmax(0, 1fr);
+        padding: 12px;
+        transition:
+          border-color 180ms ease,
+          background 180ms ease;
+      }
+
+      .timeline-item.done {
+        background: rgba(115, 226, 167, 0.08);
+        border-color: rgba(115, 226, 167, 0.32);
+      }
+
+      .timeline-item.running {
+        background: rgba(243, 197, 95, 0.1);
+        border-color: rgba(243, 197, 95, 0.42);
+      }
+
+      .timeline-index {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        color: var(--gold-2);
+        display: flex;
+        font-weight: 900;
+        height: 34px;
+        justify-content: center;
+      }
+
+      .timeline-item.done .timeline-index {
+        background: rgba(115, 226, 167, 0.2);
+        color: var(--green);
+      }
+
+      .timeline-item strong {
+        display: block;
+      }
+
+      .timeline-item span {
+        color: var(--muted);
+        display: block;
+        font-size: 13px;
+        line-height: 1.6;
+        margin-top: 4px;
+      }
+
+      /* ---------- UNDERSTANDING PANEL ---------- */
+      .understanding {
+        display: none;
+        margin-top: 18px;
+      }
+
+      .understanding.visible {
+        display: block;
+      }
+
+      .understanding-card {
+        background: linear-gradient(160deg, rgba(107, 168, 255, 0.12), rgba(72, 228, 210, 0.06));
+        border: 1px solid rgba(107, 168, 255, 0.3);
+        border-radius: 22px;
+        padding: 20px;
+      }
+
+      .understanding-card h3 {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        margin: 0 0 6px;
+      }
+
+      .understanding-card .u-sub {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 0 0 16px;
+      }
+
+      .u-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .u-block b {
+        color: var(--blue);
+        display: block;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .u-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .u-chip {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        font-size: 13px;
+        padding: 6px 11px;
+      }
+
+      .u-chip.key {
+        background: rgba(243, 197, 95, 0.16);
+        border-color: rgba(243, 197, 95, 0.36);
+        color: var(--gold-2);
+      }
+
+      .u-chip.rule {
+        background: rgba(115, 226, 167, 0.12);
+        border-color: rgba(115, 226, 167, 0.3);
+        color: #bdf3d3;
+      }
+
+      .u-map {
+        color: var(--soft);
+        font-size: 13.5px;
+        line-height: 1.7;
+      }
+
+      /* ---------- RESULTS ---------- */
+      .results {
+        display: none;
+      }
+
+      .results.visible {
+        display: block;
+      }
+
+      .metric-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .metric {
+        background: rgba(255, 255, 255, 0.065);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        overflow: hidden;
+        padding: 18px;
+        position: relative;
+      }
+
+      .metric::after {
+        background: linear-gradient(90deg, var(--gold), var(--cyan));
+        content: "";
+        height: 3px;
+        left: 0;
+        position: absolute;
+        top: 0;
+        width: 100%;
+      }
+
+      .metric span {
+        color: var(--muted);
+        display: block;
+        font-size: 13px;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 30px;
+        margin: 7px 0;
+      }
+
+      .metric strong.good {
+        color: var(--green);
+      }
+
+      .metric strong.warn {
+        color: var(--gold-2);
+      }
+
+      .result-layout {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+        margin-top: 18px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .tab {
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--ink);
+        font-weight: 900;
+        padding: 9px 15px;
+      }
+
+      .tab.active {
+        background: var(--gold);
+        color: #101827;
+      }
+
+      .tab .tab-count {
+        opacity: 0.7;
+        font-size: 12px;
+      }
+
+      .table-wrap {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        overflow: auto;
+      }
+
+      table {
+        border-collapse: collapse;
+        min-width: 720px;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+        padding: 12px 14px;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      th {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--gold-2);
+        font-size: 13px;
+        position: sticky;
+        top: 0;
+      }
+
+      td {
+        color: #e4edf9;
+        font-size: 14px;
+      }
+
+      tbody tr:hover td {
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .status-ok {
+        color: var(--green);
+        font-weight: 900;
+      }
+
+      .status-review {
+        color: var(--red);
+        font-weight: 900;
+      }
+
+      .chart-card,
+      .conclusion-card {
+        background: rgba(255, 255, 255, 0.055);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+      }
+
+      .chart-card h3,
+      .conclusion-card h3 {
+        margin: 0 0 14px;
+      }
+
+      .bar-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .bar-row {
+        display: grid;
+        gap: 8px;
+      }
+
+      .bar-label {
+        align-items: center;
+        color: var(--soft);
+        display: flex;
+        font-size: 13px;
+        justify-content: space-between;
+      }
+
+      .bar-track {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        height: 11px;
+        overflow: hidden;
+      }
+
+      .bar-value {
+        background: linear-gradient(90deg, var(--gold), var(--cyan));
+        border-radius: inherit;
+        height: 100%;
+        transition: width 700ms ease;
+      }
+
+      .bar-value.alert {
+        background: linear-gradient(90deg, var(--red), var(--gold));
+      }
+
+      .conclusion-card p {
+        color: var(--soft);
+        line-height: 1.8;
+        margin: 0;
+      }
+
+      .download-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .toast {
+        background: rgba(115, 226, 167, 0.12);
+        border: 1px solid rgba(115, 226, 167, 0.32);
+        border-radius: 14px;
+        color: #baf7d1;
+        display: none;
+        font-size: 13px;
+        margin-top: 12px;
+        padding: 10px 12px;
+      }
+
+      .toast.visible {
+        display: block;
+      }
+
+      /* ---------- DELIVERABLES ---------- */
+      .deliver-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .deliver-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 18px;
+      }
+
+      .deliver-card .d-file {
+        color: var(--cyan);
+        font-family: "SF Mono", "JetBrains Mono", monospace;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .deliver-card strong {
+        display: block;
+        font-size: 16px;
+        margin: 8px 0 6px;
+      }
+
+      .deliver-card p {
+        color: var(--muted);
+        font-size: 13.5px;
+        line-height: 1.7;
+        margin: 0;
+      }
+
+      .footer {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.8;
+        margin-top: 26px;
+        text-align: center;
+      }
+
+      @media (max-width: 980px) {
+        .hero,
+        .workbench,
+        .result-layout,
+        .u-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .arch {
+          grid-template-columns: 1fr;
+        }
+
+        .arch-bridge {
+          transform: rotate(90deg);
+        }
+
+        .scenario-grid,
+        .metric-grid,
+        .cap-grid,
+        .deliver-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .section-head {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .hero,
+        .section {
+          padding: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">炼</div>
+          <div>
+            <strong>数据炼金师 Demo</strong>
+            <span>从脏乱文件到业务结果的交互体验</span>
+          </div>
+        </div>
+        <div class="top-note">学习工作赛道 · 单文件 HTML · 可离线体验</div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Interactive Product Demo</p>
+          <h1>数据<span>炼金师</span></h1>
+          <p class="headline">把脏乱数据炼成可交付业务结果的 AI Agent</p>
+          <p class="lead">
+            上传表格、规则文档和导入模板，再说一句业务目标。Agent 先理解你要什么、把目标落到具体的表和字段，
+            再用确定性引擎完成清洗、匹配和异常识别，最终交付「能直接用的数据」和「需要复核的问题」。
+          </p>
+          <div class="hero-actions">
+            <button class="primary-btn" id="heroStartBtn" type="button">▶ 一键体验完整处理</button>
+            <button class="secondary-btn" id="scrollResultBtn" type="button">直接看交付结果</button>
+          </div>
+          <div class="hero-tags">
+            <span class="hero-tag"><b>AI 理解</b> · 目标 → 表/字段/规则</span>
+            <span class="hero-tag"><b>确定性执行</b> · 不黑盒改数</span>
+            <span class="hero-tag"><b>Web / CLI / API</b> 三种入口</span>
+          </div>
+        </div>
+
+        <aside class="console-card" aria-label="核心链路预览">
+          <div class="console-head">
+            <strong>核心链路</strong>
+            <div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+          </div>
+          <div class="mini-flow">
+            <div class="mini-step">
+              <b>1</b>
+              <div><span>文件进入</span><small>Excel / CSV / 规则文档 / 导入模板</small></div>
+              <em>input</em>
+            </div>
+            <div class="mini-step">
+              <b>2</b>
+              <div><span>目标理解</span><small>定位主表、字段、关系和规则</small></div>
+              <em>plan</em>
+            </div>
+            <div class="mini-step">
+              <b>3</b>
+              <div><span>确定执行</span><small>清洗、lookup、异常识别、质量评分</small></div>
+              <em>run</em>
+            </div>
+            <div class="mini-step">
+              <b>4</b>
+              <div><span>结果交付</span><small>处理结果、问题说明、业务结论</small></div>
+              <em>answer</em>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <!-- ========== 核心能力 ========== -->
+      <section class="section" id="capability">
+        <div class="section-head">
+          <div>
+            <p class="head-index">What it does</p>
+            <h2>它能帮你做什么</h2>
+          </div>
+          <p>面向运营、财务、人事、销售、项目管理等高频办公数据场景，把"整理数据"这件事变简单、变可靠。</p>
+        </div>
+        <div class="cap-grid">
+          <div class="cap-card">
+            <div class="cap-icon">🧭</div>
+            <h3>读懂业务目标</h3>
+            <p>用一句自然语言说清要处理什么、输出什么，Agent 自动把目标定位到具体的表、字段和匹配关系。</p>
+            <span class="cap-tag">自然语言 → 处理计划</span>
+          </div>
+          <div class="cap-card">
+            <div class="cap-icon">🔗</div>
+            <h3>多表清洗与匹配</h3>
+            <p>自动做字段清洗、多表 lookup 合并、公式派生，把分散在多张表里的信息补齐到一张结果表。</p>
+            <span class="cap-tag">清洗 · VLOOKUP · 公式</span>
+          </div>
+          <div class="cap-card">
+            <div class="cap-icon">🛡️</div>
+            <h3>从文档抽取规则</h3>
+            <p>说明文档、JSON Schema、导入模板里的校验口径会被自动抽取成规则，用来识别不合格数据。</p>
+            <span class="cap-tag">文档 → 校验规则</span>
+          </div>
+          <div class="cap-card">
+            <div class="cap-icon">🚦</div>
+            <h3>异常识别与复核</h3>
+            <p>自动分出"可直接使用"和"需要人工复核"的记录，逐条给出问题类型、影响字段和建议动作。</p>
+            <span class="cap-tag">可用 / 待复核 分流</span>
+          </div>
+          <div class="cap-card">
+            <div class="cap-icon">📊</div>
+            <h3>质量评分与图表</h3>
+            <p>输出完整性、匹配率、异常率综合质量评分，配异常分布图，让数据健康度一眼可见。</p>
+            <span class="cap-tag">评分 · 可视化</span>
+          </div>
+          <div class="cap-card">
+            <div class="cap-icon">📦</div>
+            <h3>一键交付结果包</h3>
+            <p>业务结论报告、可导入结果表、异常复核清单、图表和审计包一次生成，拿到就能用、能交。</p>
+            <span class="cap-tag">报告 · Excel · 审计</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 双层架构 ========== -->
+      <section class="section" id="architecture">
+        <div class="section-head">
+          <div>
+            <p class="head-index">How it works</p>
+            <h2>AI 理解 + 确定性执行</h2>
+          </div>
+          <p>它不是让大模型直接改你的数据，而是让 AI 做理解和规划，让工程化引擎做可验证的执行。</p>
+        </div>
+        <div class="arch">
+          <div class="arch-col brain">
+            <div class="arch-kicker">Layer 1 · Agent 理解层</div>
+            <h3>负责"想清楚要做什么"</h3>
+            <ul>
+              <li>理解用户的自然语言业务目标</li>
+              <li>定位上传文件中的表、字段和关系</li>
+              <li>生成可审阅的 JobConfig 处理计划</li>
+              <li>解释结果、风险和下一步动作</li>
+            </ul>
+          </div>
+          <div class="arch-bridge" aria-hidden="true">➜</div>
+          <div class="arch-col engine">
+            <div class="arch-kicker">Layer 2 · 确定性执行层</div>
+            <h3>负责"稳稳地把它做对"</h3>
+            <ul>
+              <li>读取多格式文件并做数据画像</li>
+              <li>执行 lookup、公式、清洗和规则校验</li>
+              <li>生成异常复核、质量评分和图表</li>
+              <li>保留审计追溯，绝不黑盒改数</li>
+            </ul>
+          </div>
+        </div>
+        <div class="arch-note">
+          ✅ 计划由 AI 起草，但每一步都经过白名单 + Schema + 字段引用校验；LLM 不可用时自动回退到确定性引擎，流程不中断。这保证了 Agent 的灵活，又不牺牲数据处理的确定性。
+        </div>
+      </section>
+
+      <!-- ========== 交互体验 ========== -->
+      <section class="section" id="demo">
+        <div class="section-head">
+          <div>
+            <p class="head-index">Try it now</p>
+            <h2>动手体验一次处理</h2>
+          </div>
+          <p>选择一个场景，点"开始炼成结果"，即可看到 Agent 如何理解目标、执行处理并交付结果。</p>
+        </div>
+
+        <div class="scenario-grid" role="tablist" aria-label="样例场景">
+          <button class="scenario-btn active" data-scenario="inventory" type="button">
+            <strong>📦 库存数据清洗</strong>
+            <span>合并分类名称，识别负库存和未匹配分类，输出可用数据与复核问题。</span>
+          </button>
+          <button class="scenario-btn" data-scenario="orders" type="button">
+            <strong>🧾 订单导入校验</strong>
+            <span>匹配客户与商品信息，识别金额异常、客户缺失和模板字段问题。</span>
+          </button>
+        </div>
+
+        <div class="workbench">
+          <section class="panel">
+            <h3><span class="step-badge">1</span> 文件输入</h3>
+            <div class="upload-zone">
+              <label for="fileInput">➕ 选择本地文件加入演示任务</label>
+              <input id="fileInput" type="file" multiple />
+              <p class="hint">Demo 不会真正上传文件，只在浏览器中展示文件名，用于模拟真实上传体验。</p>
+            </div>
+            <div class="file-list" id="fileList"></div>
+
+            <h3 style="margin-top: 20px"><span class="step-badge">2</span> 业务目标</h3>
+            <textarea id="goalInput" aria-label="业务目标"></textarea>
+            <div class="run-row">
+              <button class="primary-btn" id="runBtn" type="button">⚗️ 开始炼成结果</button>
+              <button class="secondary-btn" id="resetBtn" type="button">重置演示</button>
+            </div>
+            <p class="hint" style="margin-top: 10px">点击后会模拟 discover → plan → answer 的完整处理过程。</p>
+          </section>
+
+          <section class="panel">
+            <h3><span class="step-badge">3</span> 处理过程</h3>
+            <div class="progress-wrap" aria-live="polite">
+              <div class="progress-top">
+                <strong id="progressLabel">等待开始</strong>
+                <span id="progressPercent">0%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            </div>
+            <div class="timeline" id="timeline"></div>
+
+            <div class="understanding" id="understanding">
+              <div class="understanding-card">
+                <h3>🧠 Agent 目标理解结果</h3>
+                <p class="u-sub">这是 Agent 把你的一句话目标"翻译"成的可执行计划——真正的智能发生在这里。</p>
+                <div class="u-grid">
+                  <div class="u-block">
+                    <b>识别主表</b>
+                    <div class="u-chips" id="uBaseTable"></div>
+                  </div>
+                  <div class="u-block">
+                    <b>命中关键字段</b>
+                    <div class="u-chips" id="uFields"></div>
+                  </div>
+                  <div class="u-block">
+                    <b>匹配关系</b>
+                    <div class="u-map" id="uRelation"></div>
+                  </div>
+                  <div class="u-block">
+                    <b>抽取的校验规则</b>
+                    <div class="u-chips" id="uRules"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ========== 交付结果 ========== -->
+      <section class="section results" id="results">
+        <div class="section-head">
+          <div>
+            <p class="head-index">Deliverables</p>
+            <h2>交付结果</h2>
+          </div>
+          <p>面向业务用户优先展示"能直接用的数据"和"需要复核的问题"，过程信息留在审计包里。</p>
+        </div>
+
+        <div class="metric-grid" id="metricGrid"></div>
+
+        <div class="result-layout">
+          <section class="panel">
+            <div class="tabs" id="tabs">
+              <button class="tab active" data-tab="result" type="button">
+                处理结果 <span class="tab-count" id="resultCount"></span>
+              </button>
+              <button class="tab" data-tab="problem" type="button">
+                问题说明 <span class="tab-count" id="problemCount"></span>
+              </button>
+            </div>
+            <div class="table-wrap" id="tableWrap"></div>
+            <div class="download-row">
+              <button class="secondary-btn" id="downloadResultBtn" type="button">
+                ⬇ 下载 final_result.csv
+              </button>
+              <button class="secondary-btn" id="downloadProblemBtn" type="button">
+                ⬇ 下载 问题说明.csv
+              </button>
+            </div>
+            <div class="toast" id="toast">已生成 Demo CSV 文件。</div>
+          </section>
+
+          <aside>
+            <div class="chart-card">
+              <h3>📊 异常分布</h3>
+              <div class="bar-list" id="barList"></div>
+            </div>
+            <div class="conclusion-card" style="margin-top: 14px">
+              <h3>📝 业务结论</h3>
+              <p id="conclusionText"></p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ========== 真实产物 ========== -->
+      <section class="section" id="deliverables">
+        <div class="section-head">
+          <div>
+            <p class="head-index">Real output</p>
+            <h2>一次任务的真实产物</h2>
+          </div>
+          <p>产物由目标决定；当前 Demo 明确要求报告、复核、图表和审计，因此生成以下内容。</p>
+        </div>
+        <div class="deliver-grid">
+          <div class="deliver-card">
+            <span class="d-file">business_answer.html</span>
+            <strong>业务结论报告</strong>
+            <p>结论、质量评分、关键异常、建议动作和图表，业务用户优先阅读的一页式报告。</p>
+          </div>
+          <div class="deliver-card">
+            <span class="d-file">final_result.xlsx</span>
+            <strong>可用结果表</strong>
+            <p>处理结果 + 问题说明两个 sheet，剔除过程 sheet 和技术字段，可直接导入。</p>
+          </div>
+          <div class="deliver-card">
+            <span class="d-file">final_result.xlsx / 问题说明</span>
+            <strong>异常复核视图</strong>
+            <p>需要人工确认的问题记录放在同一结果工作簿中，不再重复生成独立异常文件。</p>
+          </div>
+          <div class="deliver-card">
+            <span class="d-file">charts/</span>
+            <strong>可视化分析</strong>
+            <p>异常分布、质量评分、匹配率等图表，快速判断数据健康度。</p>
+          </div>
+          <div class="deliver-card">
+            <span class="d-file">audit_package/</span>
+            <strong>审计追溯包</strong>
+            <p>血缘、规则命中、字段变化和执行追溯，面向排查和验收，杜绝黑盒。</p>
+          </div>
+          <div class="deliver-card">
+            <span class="d-file">Web / CLI / API</span>
+            <strong>三种使用入口</strong>
+            <p>可视化控制台、命令行批处理、接口接入，覆盖个人办公到系统集成。</p>
+          </div>
+        </div>
+      </section>
+
+      <p class="footer">
+        数据炼金师 · Data Alchemist Agent · 单文件 HTML Demo · 内置样例数据 · 可离线体验<br />
+        让每一堆乱数据，都能被炼成一份看得懂、用得上、交得出去的业务结果。
+      </p>
+    </main>
+
+    <script>
+      const steps = [
+        {
+          title: "读取文件并识别结构",
+          detail: "扫描表格、规则文档和导入模板，识别字段、行数、空值和重复记录。"
+        },
+        {
+          title: "理解业务目标",
+          detail: "从自然语言目标中定位主表、关键字段、匹配键和期望交付物。"
+        },
+        {
+          title: "生成处理计划",
+          detail: "推荐 lookup 关系、清洗规则、异常标签和结果交付结构。"
+        },
+        {
+          title: "执行清洗匹配",
+          detail: "确定性执行字段清洗、多表匹配、公式派生和规则校验。"
+        },
+        {
+          title: "识别问题并生成结论",
+          detail: "拆分可直接使用数据和需复核记录，生成指标、图表和业务结论。"
+        }
+      ];
+
+      const scenarios = {
+        inventory: {
+          name: "库存数据清洗",
+          goal: "清洗库存数据，按 category_code 合并分类名称，输出可直接使用的数据和需要复核的问题。",
+          files: [
+            { type: "XLSX", name: "inventory.xlsx", note: "库存明细，含 sku_id、category_code、stock_qty" },
+            { type: "CSV", name: "category_ref.csv", note: "分类维表，用于补齐 category_name" },
+            { type: "MD", name: "inventory_rules.md", note: "库存数量不得为负，分类编码必须匹配" },
+            { type: "TPL", name: "import_template.xlsx", note: "目标系统导入字段模板" }
+          ],
+          understanding: {
+            baseTable: ["inventory.xlsx"],
+            fields: ["sku_id", "category_code", "stock_qty", "warehouse"],
+            relation: "inventory.category_code ➜ category_ref.category_code（补齐 category_name）",
+            rules: ["库存数量不得为负", "分类编码必须匹配维表", "warehouse 不应为空"]
+          },
+          metrics: [
+            { label: "总记录数", value: "128", note: "参与本次处理的库存记录", tone: "" },
+            { label: "可直接使用", value: "112", note: "进入处理结果的数据", tone: "good" },
+            { label: "需要复核", value: "16", note: "存在异常或不确定的数据", tone: "warn" },
+            { label: "质量评分", value: "88", note: "综合完整性、匹配率和异常率", tone: "good" }
+          ],
+          resultRows: [
+            { 处理状态: "通过", sku_id: "SKU-001", category_code: "C01", category_name: "食品", stock_qty: "120", warehouse: "WH-A" },
+            { 处理状态: "通过", sku_id: "SKU-002", category_code: "C02", category_name: "日用品", stock_qty: "86", warehouse: "WH-B" },
+            { 处理状态: "通过", sku_id: "SKU-004", category_code: "C03", category_name: "办公用品", stock_qty: "42", warehouse: "WH-A" }
+          ],
+          problemRows: [
+            { 处理状态: "需处理", 问题类型: "数值为负", 建议处理: "确认库存是否允许为负，必要时修正原始记录", 源行号: "17", sku_id: "SKU-003", 当前值: "-3" },
+            { 处理状态: "需处理", 问题类型: "关联数据未匹配", 建议处理: "补充分类维表或修正 category_code", 源行号: "29", sku_id: "SKU-018", 当前值: "C404" },
+            { 处理状态: "需处理", 问题类型: "空值", 建议处理: "补齐 warehouse 或确认允许为空", 源行号: "57", sku_id: "SKU-041", 当前值: "" }
+          ],
+          bars: [
+            { label: "可直接使用", value: 112, max: 128, alert: false },
+            { label: "负库存", value: 5, max: 20, alert: true },
+            { label: "分类未匹配", value: 7, max: 20, alert: true },
+            { label: "字段缺失", value: 4, max: 20, alert: true }
+          ],
+          conclusion:
+            "本次库存数据整体可用率较高（112 / 128），主要问题集中在负库存和分类编码未匹配。建议先补齐分类维表并确认负库存业务规则，处理后即可用于目标系统导入。"
+        },
+        orders: {
+          name: "订单导入校验",
+          goal: "清洗订单数据，匹配客户和商品信息，输出可导入系统的数据，并列出不能使用的数据原因。",
+          files: [
+            { type: "XLSX", name: "orders.xlsx", note: "订单明细，含 order_id、customer_id、product_id、amount" },
+            { type: "XLSX", name: "customers.xlsx", note: "客户维表，用于补齐客户名称和等级" },
+            { type: "XLSX", name: "products.xlsx", note: "商品维表，用于补齐商品标准编码" },
+            { type: "JSON", name: "order_schema.json", note: "订单导入字段定义和类型要求" }
+          ],
+          understanding: {
+            baseTable: ["orders.xlsx"],
+            fields: ["order_id", "customer_id", "product_id", "amount"],
+            relation: "orders.customer_id ➜ customers；orders.product_id ➜ products",
+            rules: ["amount 必须 ≥ 0", "customer_id 必须匹配客户维表", "导入模板字段必须齐全"]
+          },
+          metrics: [
+            { label: "总记录数", value: "320", note: "参与本次处理的订单记录", tone: "" },
+            { label: "可直接导入", value: "274", note: "通过规则和匹配的数据", tone: "good" },
+            { label: "需要复核", value: "46", note: "存在缺失、冲突或异常的数据", tone: "warn" },
+            { label: "质量评分", value: "81", note: "综合完整性、匹配率和异常率", tone: "good" }
+          ],
+          resultRows: [
+            { 处理状态: "通过", order_id: "O-1001", customer_id: "C001", customer_name: "Acme", product_id: "P01", amount: "1200" },
+            { 处理状态: "通过", order_id: "O-1002", customer_id: "C002", customer_name: "Beta", product_id: "P04", amount: "860" },
+            { 处理状态: "通过", order_id: "O-1005", customer_id: "C008", customer_name: "Delta", product_id: "P02", amount: "430" }
+          ],
+          problemRows: [
+            { 处理状态: "需处理", 问题类型: "关联数据未匹配", 建议处理: "补充客户主数据或修正 customer_id", 源行号: "41", order_id: "O-1041", 当前值: "C404" },
+            { 处理状态: "需处理", 问题类型: "金额为负", 建议处理: "确认是否为退款订单，否则修正金额", 源行号: "88", order_id: "O-1088", 当前值: "-99" },
+            { 处理状态: "需处理", 问题类型: "模板字段缺失", 建议处理: "补齐 target_note 字段或调整导入模板", 源行号: "模板", order_id: "-", 当前值: "target_note" }
+          ],
+          bars: [
+            { label: "可直接导入", value: 274, max: 320, alert: false },
+            { label: "客户未匹配", value: 21, max: 60, alert: true },
+            { label: "商品未匹配", value: 15, max: 60, alert: true },
+            { label: "金额异常", value: 10, max: 60, alert: true }
+          ],
+          conclusion:
+            "订单数据已生成可导入结果（274 / 320），当前阻塞点主要是客户主数据缺失、部分商品未匹配和金额异常。建议先补齐客户/商品维表，再对金额异常记录做业务确认。"
+        }
+      };
+
+      const state = {
+        scenarioId: "inventory",
+        selectedTab: "result",
+        running: false,
+        uploadedFiles: []
+      };
+
+      const $ = (selector) => document.querySelector(selector);
+      const scenarioButtons = document.querySelectorAll(".scenario-btn");
+      const fileInput = $("#fileInput");
+      const fileList = $("#fileList");
+      const goalInput = $("#goalInput");
+      const runBtn = $("#runBtn");
+      const resetBtn = $("#resetBtn");
+      const heroStartBtn = $("#heroStartBtn");
+      const scrollResultBtn = $("#scrollResultBtn");
+      const progressLabel = $("#progressLabel");
+      const progressPercent = $("#progressPercent");
+      const progressFill = $("#progressFill");
+      const timeline = $("#timeline");
+      const understanding = $("#understanding");
+      const results = $("#results");
+      const metricGrid = $("#metricGrid");
+      const tableWrap = $("#tableWrap");
+      const barList = $("#barList");
+      const conclusionText = $("#conclusionText");
+      const toast = $("#toast");
+
+      function scenario() {
+        return scenarios[state.scenarioId];
+      }
+
+      function renderFiles() {
+        const files = state.uploadedFiles.length ? state.uploadedFiles : scenario().files;
+        fileList.innerHTML = files
+          .map(
+            (file) => `
+              <div class="file-item">
+                <div class="file-type">${file.type}</div>
+                <div>
+                  <strong title="${file.name}">${file.name}</strong>
+                  <span>${file.note}</span>
+                </div>
+              </div>
+            `
+          )
+          .join("");
+      }
+
+      function renderTimeline(activeIndex = -1) {
+        timeline.innerHTML = steps
+          .map((step, index) => {
+            const status = index < activeIndex ? "done" : index === activeIndex ? "running" : "";
+            const mark = index < activeIndex ? "✓" : index + 1;
+            return `
+              <div class="timeline-item ${status}">
+                <div class="timeline-index">${mark}</div>
+                <div>
+                  <strong>${step.title}</strong>
+                  <span>${step.detail}</span>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function renderUnderstanding() {
+        const u = scenario().understanding;
+        $("#uBaseTable").innerHTML = u.baseTable
+          .map((item) => `<span class="u-chip key">${item}</span>`)
+          .join("");
+        $("#uFields").innerHTML = u.fields
+          .map((item) => `<span class="u-chip">${item}</span>`)
+          .join("");
+        $("#uRelation").textContent = u.relation;
+        $("#uRules").innerHTML = u.rules
+          .map((item) => `<span class="u-chip rule">${item}</span>`)
+          .join("");
+      }
+
+      function renderMetrics() {
+        metricGrid.innerHTML = scenario()
+          .metrics.map(
+            (metric) => `
+              <div class="metric">
+                <span>${metric.label}</span>
+                <strong class="${metric.tone}">${metric.value}</strong>
+                <span>${metric.note}</span>
+              </div>
+            `
+          )
+          .join("");
+      }
+
+      function renderTabCounts() {
+        $("#resultCount").textContent = `(${scenario().resultRows.length})`;
+        $("#problemCount").textContent = `(${scenario().problemRows.length})`;
+      }
+
+      function renderTable() {
+        const rows = state.selectedTab === "result" ? scenario().resultRows : scenario().problemRows;
+        const columns = Object.keys(rows[0] || {});
+        tableWrap.innerHTML = `
+          <table>
+            <thead>
+              <tr>${columns.map((column) => `<th>${column}</th>`).join("")}</tr>
+            </thead>
+            <tbody>
+              ${rows
+                .map(
+                  (row) => `
+                    <tr>
+                      ${columns
+                        .map((column) => {
+                          const value = row[column] || "";
+                          const statusClass =
+                            column === "处理状态" && value === "通过"
+                              ? "status-ok"
+                              : column === "处理状态"
+                                ? "status-review"
+                                : "";
+                          return `<td class="${statusClass}">${value}</td>`;
+                        })
+                        .join("")}
+                    </tr>
+                  `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        `;
+      }
+
+      function renderBars() {
+        barList.innerHTML = scenario()
+          .bars.map((bar) => {
+            const width = Math.max(5, Math.round((bar.value / bar.max) * 100));
+            return `
+              <div class="bar-row">
+                <div class="bar-label"><span>${bar.label}</span><b>${bar.value}</b></div>
+                <div class="bar-track"><div class="bar-value ${bar.alert ? "alert" : ""}" style="width:${width}%"></div></div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function renderResults() {
+        renderMetrics();
+        renderTabCounts();
+        renderTable();
+        renderBars();
+        conclusionText.textContent = scenario().conclusion;
+      }
+
+      function setProgress(percent, label) {
+        progressPercent.textContent = `${percent}%`;
+        progressFill.style.width = `${percent}%`;
+        progressLabel.textContent = label;
+      }
+
+      function resetRunState() {
+        state.running = false;
+        setProgress(0, "等待开始");
+        renderTimeline(-1);
+        results.classList.remove("visible");
+        understanding.classList.remove("visible");
+        runBtn.textContent = "⚗️ 开始炼成结果";
+        toast.classList.remove("visible");
+      }
+
+      function selectScenario(id) {
+        state.scenarioId = id;
+        state.uploadedFiles = [];
+        state.selectedTab = "result";
+        goalInput.value = scenario().goal;
+        scenarioButtons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.scenario === id);
+        });
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.classList.toggle("active", tab.dataset.tab === "result");
+        });
+        renderFiles();
+        renderUnderstanding();
+        renderResults();
+        resetRunState();
+      }
+
+      function runDemo() {
+        if (state.running) {
+          return;
+        }
+        state.running = true;
+        runBtn.textContent = "处理中…";
+        results.classList.remove("visible");
+        understanding.classList.remove("visible");
+        toast.classList.remove("visible");
+        setProgress(0, "开始读取文件");
+        renderTimeline(0);
+
+        steps.forEach((step, index) => {
+          window.setTimeout(() => {
+            renderTimeline(index);
+            const percent = Math.round(((index + 1) / steps.length) * 100);
+            setProgress(percent, step.title);
+            // 目标理解完成后，展示 Agent 的理解结果面板
+            if (index === 2) {
+              renderUnderstanding();
+              understanding.classList.add("visible");
+            }
+          }, index * 820);
+        });
+
+        window.setTimeout(
+          () => {
+            renderTimeline(steps.length);
+            setProgress(100, "结果已生成");
+            renderResults();
+            results.classList.add("visible");
+            state.running = false;
+            runBtn.textContent = "↻ 重新炼成结果";
+            results.scrollIntoView({ behavior: "smooth", block: "start" });
+          },
+          steps.length * 820 + 260
+        );
+      }
+
+      function rowsToCsv(rows) {
+        const columns = Object.keys(rows[0] || {});
+        const escapeCell = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+        return [
+          columns.map(escapeCell).join(","),
+          ...rows.map((row) => columns.map((column) => escapeCell(row[column])).join(","))
+        ].join("\n");
+      }
+
+      function downloadCsv(type) {
+        const rows = type === "result" ? scenario().resultRows : scenario().problemRows;
+        const filename =
+          type === "result" ? "final_result_demo.csv" : "problem_description_demo.csv";
+        const blob = new Blob(["\ufeff" + rowsToCsv(rows)], {
+          type: "text/csv;charset=utf-8"
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        toast.textContent = `已生成 ${filename}`;
+        toast.classList.add("visible");
+      }
+
+      scenarioButtons.forEach((button) => {
+        button.addEventListener("click", () => selectScenario(button.dataset.scenario));
+      });
+
+      fileInput.addEventListener("change", (event) => {
+        const files = Array.from(event.target.files || []);
+        state.uploadedFiles = files.map((file) => {
+          const suffix = file.name.split(".").pop()?.toUpperCase() || "FILE";
+          return {
+            type: suffix.slice(0, 4),
+            name: file.name,
+            note: `${Math.max(1, Math.round(file.size / 1024))} KB，本地模拟文件`
+          };
+        });
+        renderFiles();
+      });
+
+      runBtn.addEventListener("click", runDemo);
+      resetBtn.addEventListener("click", () => selectScenario(state.scenarioId));
+      heroStartBtn.addEventListener("click", () => {
+        $("#demo").scrollIntoView({ behavior: "smooth" });
+        window.setTimeout(runDemo, 500);
+      });
+      scrollResultBtn.addEventListener("click", () => {
+        if (!results.classList.contains("visible")) {
+          runDemo();
+        } else {
+          results.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          state.selectedTab = tab.dataset.tab;
+          document.querySelectorAll(".tab").forEach((item) => {
+            item.classList.toggle("active", item === tab);
+          });
+          renderTable();
+        });
+      });
+
+      $("#downloadResultBtn").addEventListener("click", () => downloadCsv("result"));
+      $("#downloadProblemBtn").addEventListener("click", () => downloadCsv("problem"));
+
+      selectScenario("inventory");
+    </script>
+  </body>
+</html>

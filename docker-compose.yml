@@ -1,0 +1,217 @@
+# Production topology: nginx (static SPA + /api reverse-proxy) in front of a
+# uvicorn API + ARQ workers. PostgreSQL owns metadata, Redis owns dispatch, and MinIO
+# owns uploads/results. Local container paths are disposable execution caches.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: data_agent
+      POSTGRES_USER: data_agent
+      POSTGRES_PASSWORD: "${DATA_AGENT_DATABASE_PASSWORD:?Set DATA_AGENT_DATABASE_PASSWORD in .env}"
+    volumes:
+      - metadata_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U data_agent -d data_agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - queue_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: data-agent
+      MINIO_ROOT_PASSWORD: "${DATA_AGENT_ARTIFACT_SECRET:?Set DATA_AGENT_ARTIFACT_SECRET in .env}"
+    volumes:
+      - artifact_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mc alias set local http://minio:9000 data-agent "$${DATA_AGENT_ARTIFACT_SECRET}" &&
+        mc mb --ignore-existing local/data-agent-artifacts
+    environment:
+      DATA_AGENT_ARTIFACT_SECRET: "${DATA_AGENT_ARTIFACT_SECRET:?Set DATA_AGENT_ARTIFACT_SECRET in .env}"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: data-agent-backend:latest
+    restart: unless-stopped
+    cpus: "1.0"
+    mem_limit: 1g
+    pids_limit: 256
+    env_file:
+      - .env
+    environment:
+      DATA_AGENT_ENV: production
+      # API workers only accept requests and enqueue durable messages.
+      DATA_AGENT_API_WORKERS: "2"
+      DATA_AGENT_API_WORK_DIR: /data/api_jobs
+      DATA_AGENT_METADATA_BACKEND: postgres
+      DATA_AGENT_UNDERSTANDING_CACHE_BACKEND: postgres
+      DATA_AGENT_UNDERSTANDING_CACHE_TTL_SECONDS: ${DATA_AGENT_UNDERSTANDING_CACHE_TTL_SECONDS:-2592000}
+      DATA_AGENT_TENANT_ID: ${DATA_AGENT_TENANT_ID:-default}
+      # Host/user environment values are not inherited by a service merely because
+      # Compose used them for interpolation. Pass auth explicitly so production
+      # cannot report healthy while every business request fails closed.
+      DATA_AGENT_API_KEY: "${DATA_AGENT_API_KEY:-}"
+      DATA_AGENT_TENANT_API_KEYS_JSON: "${DATA_AGENT_TENANT_API_KEYS_JSON:-}"
+      DATA_AGENT_OIDC_ISSUER: "${DATA_AGENT_OIDC_ISSUER:-}"
+      DATA_AGENT_OIDC_AUDIENCE: "${DATA_AGENT_OIDC_AUDIENCE:-}"
+      DATA_AGENT_OIDC_JWKS_URL: "${DATA_AGENT_OIDC_JWKS_URL:-}"
+      DATA_AGENT_OIDC_ALGORITHMS: "${DATA_AGENT_OIDC_ALGORITHMS:-RS256}"
+      DATA_AGENT_OIDC_TENANT_CLAIM: "${DATA_AGENT_OIDC_TENANT_CLAIM:-tenant_id}"
+      DATA_AGENT_OIDC_ROLE_CLAIM: "${DATA_AGENT_OIDC_ROLE_CLAIM:-role}"
+      DATA_AGENT_MAX_ACTIVE_JOBS_PER_TENANT: ${DATA_AGENT_MAX_ACTIVE_JOBS_PER_TENANT:-4}
+      DATA_AGENT_MAX_BATCH_UPLOAD_BYTES: ${DATA_AGENT_MAX_BATCH_UPLOAD_BYTES:-524288000}
+      DATA_AGENT_MAX_STORED_BYTES_PER_TENANT: ${DATA_AGENT_MAX_STORED_BYTES_PER_TENANT:-0}
+      DATA_AGENT_MIN_FREE_TEMP_BYTES: ${DATA_AGENT_MIN_FREE_TEMP_BYTES:-268435456}
+      # Keyword conninfo avoids URL-encoding surprises in generated passwords.
+      DATA_AGENT_DATABASE_URL: "dbname=data_agent user=data_agent password=${DATA_AGENT_DATABASE_PASSWORD} host=postgres port=5432"
+      DATA_AGENT_JOB_QUEUE_BACKEND: arq
+      DATA_AGENT_REDIS_URL: redis://redis:6379/0
+      DATA_AGENT_ARQ_QUEUE: data-agent
+      DATA_AGENT_ARTIFACT_BACKEND: s3
+      DATA_AGENT_ARTIFACT_BUCKET: data-agent-artifacts
+      DATA_AGENT_S3_ENDPOINT_URL: http://minio:9000
+      DATA_AGENT_S3_REGION: us-east-1
+      DATA_AGENT_S3_ACCESS_KEY: data-agent
+      DATA_AGENT_S3_SECRET_KEY: "${DATA_AGENT_ARTIFACT_SECRET}"
+      # Backend is reachable only through the compose network; nginx overwrites
+      # client forwarding headers before proxying.
+      DATA_AGENT_FORWARDED_ALLOW_IPS: "*"
+    tmpfs:
+      - /data/api_jobs:size=2g,uid=10001,gid=10001,mode=0700
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else sys.exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: data-agent-backend:latest
+    restart: unless-stopped
+    cpus: "2.0"
+    mem_limit: 4g
+    pids_limit: 512
+    env_file:
+      - .env
+    environment:
+      DATA_AGENT_ENV: production
+      DATA_AGENT_API_WORK_DIR: /data/api_jobs
+      DATA_AGENT_METADATA_BACKEND: postgres
+      DATA_AGENT_UNDERSTANDING_CACHE_BACKEND: postgres
+      DATA_AGENT_UNDERSTANDING_CACHE_TTL_SECONDS: ${DATA_AGENT_UNDERSTANDING_CACHE_TTL_SECONDS:-2592000}
+      DATA_AGENT_TENANT_ID: ${DATA_AGENT_TENANT_ID:-default}
+      # Workers restore tenant context from queue messages and need the same map so
+      # tenant-aware memory/cache paths do not fall back to the single-user layout.
+      DATA_AGENT_TENANT_API_KEYS_JSON: "${DATA_AGENT_TENANT_API_KEYS_JSON:-}"
+      DATA_AGENT_DATABASE_URL: "dbname=data_agent user=data_agent password=${DATA_AGENT_DATABASE_PASSWORD} host=postgres port=5432"
+      DATA_AGENT_JOB_QUEUE_BACKEND: arq
+      DATA_AGENT_REDIS_URL: redis://redis:6379/0
+      DATA_AGENT_ARQ_QUEUE: data-agent
+      # One task per worker container makes the CPU/memory/tmpfs ceiling a hard
+      # per-task envelope. Scale worker replicas to add concurrency.
+      DATA_AGENT_ARQ_MAX_JOBS: "1"
+      DATA_AGENT_ARTIFACT_BACKEND: s3
+      DATA_AGENT_ARTIFACT_BUCKET: data-agent-artifacts
+      DATA_AGENT_S3_ENDPOINT_URL: http://minio:9000
+      DATA_AGENT_S3_REGION: us-east-1
+      DATA_AGENT_S3_ACCESS_KEY: data-agent
+      DATA_AGENT_S3_SECRET_KEY: "${DATA_AGENT_ARTIFACT_SECRET}"
+    tmpfs:
+      - /data/api_jobs:size=2g,uid=10001,gid=10001,mode=0700
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    # The shared backend image probes the API's HTTP endpoint by default. ARQ
+    # workers do not serve HTTP, so override it with the dependency that makes
+    # the worker able to receive jobs. If the ARQ process exits, the container
+    # itself stops; while it is alive, Redis reachability is the readiness signal.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os, sys; from redis import Redis;
+          client = Redis.from_url(os.environ["DATA_AGENT_REDIS_URL"],
+          socket_connect_timeout=2, socket_timeout=2);
+          sys.exit(0 if client.ping() else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    entrypoint: ["arq"]
+    command: ["data_agent.api.arq_worker.WorkerSettings"]
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    image: data-agent-web:latest
+    restart: unless-stopped
+    environment:
+      BACKEND_HOST: backend
+      BACKEND_PORT: "8000"
+      # Injected by nginx on the server side; never baked into browser JavaScript.
+      DATA_AGENT_API_KEY: "${DATA_AGENT_API_KEY:-}"
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  metadata_data:
+    driver: local
+  queue_data:
+    driver: local
+  artifact_data:
+    driver: local

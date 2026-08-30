@@ -1,0 +1,836 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "task_id": "order_customer_enrichment",
+      "domain": "commerce",
+      "description": "Multi-table enrichment with an explicit base table and join key.",
+      "goal": "以 orders 为主表，按 customer_id 合并 customers 的 customer_name，输出清洗后的订单结果",
+      "goal_variants": [
+        "请以 orders 为主表，按 customer_id 关联 customers 的 customer_name，输出订单结果",
+        "orders 做主表，通过 customer_id 补上 customers 里的 customer_name，并输出结果",
+        "以 orders 作为明细主表，用 customer_id 合并 customers.customer_name 后导出",
+        "把 customers 的 customer_name 按 customer_id 关联到 orders，orders 保持为主表",
+        "请在 orders 上按 customer_id 补充 customers 的 customer_name，结果以 orders 为准",
+        "orders 为基表，customer_id 是关联键，带出 customers 中的 customer_name",
+        "按 customer_id 将 customers.customer_name 合并进 orders，并交付订单明细",
+        "以 orders 的每一行作为结果，按 customer_id 关联 customer_name",
+        "主表选 orders，用 customer_id 从 customers 查回 customer_name 并输出",
+        "请把 customers 表的 customer_name 通过 customer_id 补到 orders 主表",
+        "orders 不少行，按 customer_id 连接 customers，新增 customer_name",
+        "基于 orders，使用 customer_id 匹配 customers 的 customer_name，导出结果",
+        "将 orders 和 customers 按 customer_id 关联，只给 orders 补 customer_name",
+        "以订单表 orders 为主，通过 customer_id 带出 customers.customer_name",
+        "在 orders 明细中按 customer_id 查找 customers 的 customer_name",
+        "orders 主表关联 customers：键是 customer_id，需要 customer_name 字段",
+        "请完成 orders 到 customers 的 customer_id 关联，并补齐 customer_name",
+        "从 customers 按 customer_id 取 customer_name 写入 orders 结果表",
+        "输出 orders 明细，按 customer_id 合并 customers 中的 customer_name"
+      ],
+      "llm_variant_indexes": [3, 6, 10, 11, 12, 15, 16, 19],
+      "tags": ["paraphrase", "lookup", "multi_table", "row_preservation", "output_minimality"],
+      "tables": {
+        "orders": {
+          "order_id": [
+            "O1",
+            "O2",
+            "O3"
+          ],
+          "customer_id": [
+            "C1",
+            "C2",
+            "C3"
+          ],
+          "amount": [
+            120,
+            80,
+            200
+          ]
+        },
+        "customers": {
+          "customer_id": [
+            "C1",
+            "C2",
+            "C3"
+          ],
+          "customer_name": [
+            "Acme",
+            "Beta",
+            "Gamma"
+          ]
+        }
+      },
+      "expectations": {
+        "task_actions": [
+          "lookup",
+          "export"
+        ],
+        "capabilities": [
+          "read_tables",
+          "profile_dataset",
+          "lookup_fields",
+          "export_table"
+        ],
+        "sheets": [
+          "处理结果"
+        ],
+        "charts": [],
+        "report_enabled": false,
+        "max_clarification_slots": 0,
+        "counts": {
+          "total": 3,
+          "valid": 3,
+          "abnormal": 0
+        },
+        "required_columns": [
+          "order_id",
+          "customer_name"
+        ],
+        "forbidden_columns": [
+          "ai_extra_label",
+          "处理状态",
+          "问题类型",
+          "建议处理",
+          "源行号",
+          "影响字段",
+          "当前值"
+        ],
+        "row_assertions": [
+          {
+            "order_id": "O1",
+            "customer_name": "Acme"
+          }
+        ]
+      }
+    },
+    {
+      "task_id": "supplier_quality_review",
+      "domain": "procurement",
+      "description": "Single-table quality review with a required identifier.",
+      "goal": "清洗 suppliers 供应商主数据，列出 supplier_id 缺失的异常原因",
+      "goal_variants": [
+        "清洗 suppliers 供应商数据，并列出 supplier_id 为空的异常原因",
+        "请检查并清洗 suppliers，把缺少 supplier_id 的记录及原因列出来",
+        "处理 suppliers 主数据，supplier_id 缺失的要进入问题说明",
+        "清洗供应商表 suppliers，说明哪些记录没有 supplier_id 以及原因",
+        "请对 suppliers 做数据清洗，列出 supplier_id 空值的异常明细",
+        "检查 suppliers 的 supplier_id 必填项，输出可用数据和缺失原因",
+        "清洗 suppliers，并把 supplier_id 未填写的供应商列为复核问题",
+        "供应商主数据 suppliers 需要清洗，请列出 supplier_id 缺失异常",
+        "对 suppliers 做质量检查，supplier_id 为空的记录要说明原因",
+        "请清洗 suppliers 表，输出正常供应商并列出 supplier_id 缺失原因",
+        "检查并整理 suppliers，找出没有 supplier_id 的记录及异常原因",
+        "suppliers 数据清洗：supplier_id 必填，缺失项请列出问题说明",
+        "请验证 suppliers 的 supplier_id，清洗后把缺失记录单独说明",
+        "供应商表 suppliers 中 supplier_id 缺失的算异常，请清洗并列出原因",
+        "清洗供应商数据，针对 suppliers 里空的 supplier_id 给出异常说明",
+        "请处理 suppliers 主数据并输出 supplier_id 缺失的复核清单",
+        "suppliers 需要质量清洗，列出 supplier_id 为空的异常记录",
+        "清洗 suppliers，保留可用供应商并说明 supplier_id 缺失问题",
+        "请对 suppliers 执行清洗与校验，列出 supplier_id 缺失原因"
+      ],
+      "llm_variant_indexes": [3, 4, 5, 7, 10, 11, 12, 13, 14, 15, 16, 19, 20],
+      "variant_expectations": {
+        "7": {
+          "counts": {"total": 3, "valid": 2, "abnormal": 1},
+          "sheet_expectations": {
+            "处理结果": {
+              "row_assertions": [],
+              "forbidden_rows": [{"supplier_name": "Beta"}],
+              "min_rows": 2
+            }
+          }
+        },
+        "11": {
+          "counts": {"total": 3, "valid": 2, "abnormal": 1},
+          "sheet_expectations": {
+            "处理结果": {
+              "row_assertions": [],
+              "forbidden_rows": [{"supplier_name": "Beta"}],
+              "min_rows": 2
+            }
+          }
+        },
+        "14": {
+          "counts": {"total": 3, "valid": 2, "abnormal": 1},
+          "sheet_expectations": {
+            "处理结果": {
+              "row_assertions": [],
+              "forbidden_rows": [{"supplier_name": "Beta"}],
+              "min_rows": 2
+            }
+          }
+        },
+        "19": {
+          "counts": {"total": 3, "valid": 2, "abnormal": 1},
+          "sheet_expectations": {
+            "处理结果": {
+              "row_assertions": [],
+              "forbidden_rows": [{"supplier_name": "Beta"}],
+              "min_rows": 2
+            }
+          }
+        }
+      },
+      "tags": ["paraphrase", "validation", "nulls", "review", "negative_rows"],
+      "tables": {
+        "suppliers": {
+          "supplier_id": [
+            "S1",
+            "",
+            "S3"
+          ],
+          "supplier_name": [
+            "Alpha",
+            "Beta",
+            "Gamma"
+          ],
+          "email": [
+            "a@example.com",
+            "bad-email",
+            "g@example.com"
+          ]
+        }
+      },
+      "expectations": {
+        "task_actions": [
+          "validate",
+          "review",
+          "export"
+        ],
+        "capabilities": [
+          "read_tables",
+          "detect_anomalies",
+          "validate_rules",
+          "export_table"
+        ],
+        "sheets": [
+          "处理结果",
+          "问题说明"
+        ],
+        "charts": [],
+        "report_enabled": false,
+        "max_clarification_slots": 0,
+        "counts": {
+          "total": 3,
+          "valid": 3,
+          "abnormal": 0
+        },
+        "sheet_expectations": {
+          "处理结果": {
+            "required_columns": [
+              "supplier_id",
+              "supplier_name"
+            ],
+            "forbidden_columns": [
+              "处理状态",
+              "问题类型",
+              "建议处理",
+              "源行号",
+              "影响字段",
+              "当前值"
+            ],
+            "row_assertions": [
+              {
+                "supplier_name": "Beta"
+              }
+            ],
+            "min_rows": 3
+          },
+          "问题说明": {
+            "required_columns": [
+              "supplier_id",
+              "处理状态",
+              "影响字段",
+              "当前值"
+            ],
+            "row_assertions": [
+              {
+                "supplier_name": "Beta",
+                "处理状态": "需处理",
+                "影响字段": "supplier_id"
+              }
+            ],
+            "min_rows": 1
+          }
+        }
+      }
+    },
+    {
+      "task_id": "laboratory_sample_review",
+      "domain": "laboratory",
+      "description": "Unfamiliar-domain annotation and review task.",
+      "goal": "检查 samples 实验样本，标出 concentration 为空的记录并输出复核问题",
+      "goal_variants": [
+        "检查 samples 样本数据，标记 concentration 缺失记录并列出复核问题",
+        "请校验 samples，把 concentration 为空的实验样本标出来供复核",
+        "分析 samples 样本，concentration 没有值的记录需要标记并输出问题",
+        "检查实验表 samples，列出 concentration 空值记录作为复核清单",
+        "请在 samples 中标出缺少 concentration 的样本并生成问题说明",
+        "对 samples 做检查，concentration 为空时标记异常并交付复核表",
+        "实验样本 samples 需要校验，请标记 concentration 缺失项",
+        "检查 samples 的 concentration 必填情况，把空值记录列为复核问题",
+        "请检查样本数据，samples 中 concentration 缺失的要标注并复核",
+        "samples 质量检查：找出 concentration 为空的记录并输出问题清单",
+        "标记 samples 表中 concentration 没填的实验记录，结果需要复核说明",
+        "请核查 samples，concentration 空值样本要进入问题说明",
+        "对 samples 的 concentration 做缺失检查并输出标记结果和复核问题",
+        "检查实验样本，标出 samples 里 concentration 为空的数据",
+        "samples 表需要验证 concentration，缺失记录请列出复核原因",
+        "请列出 samples 中 concentration 缺失的样本并标记为待复核",
+        "校验 samples 实验数据，把 concentration 空值记录标记出来",
+        "检查 samples 并输出 concentration 缺失问题，不要漏掉复核清单",
+        "请对样本表 samples 做检查，标记 concentration 为空的异常记录"
+      ],
+      "llm_variant_indexes": [4, 5, 6, 8, 9, 11, 13, 15, 16, 18, 19, 20],
+      "variant_expectations": {
+        "1": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "2": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "3": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "4": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "6": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "7": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "8": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "10": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "12": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "14": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "15": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "17": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "18": {"task_actions": ["validate", "review", "annotate", "export"]},
+        "20": {"task_actions": ["validate", "review", "annotate", "export"]}
+      },
+      "tags": ["paraphrase", "unfamiliar_domain", "annotation", "review", "nulls"],
+      "tables": {
+        "samples": {
+          "sample_id": [
+            "LAB-1",
+            "LAB-2",
+            "LAB-3"
+          ],
+          "assay_type": [
+            "A",
+            "B",
+            "A"
+          ],
+          "concentration": [
+            1.2,
+            null,
+            2.4
+          ]
+        }
+      },
+      "expectations": {
+        "task_actions": [
+          "validate",
+          "review",
+          "export"
+        ],
+        "capabilities": [
+          "read_tables",
+          "validate_rules",
+          "export_table"
+        ],
+        "sheets": [
+          "处理结果",
+          "问题说明"
+        ],
+        "charts": [],
+        "report_enabled": false,
+        "max_clarification_slots": 0,
+        "counts": {
+          "total": 3,
+          "valid": 3,
+          "abnormal": 0
+        },
+        "sheet_expectations": {
+          "处理结果": {
+            "required_columns": [
+              "sample_id"
+            ],
+            "forbidden_columns": [
+              "处理状态",
+              "问题类型",
+              "建议处理",
+              "源行号",
+              "影响字段",
+              "当前值"
+            ],
+            "row_assertions": [
+              {
+                "sample_id": "LAB-2"
+              }
+            ],
+            "min_rows": 3
+          },
+          "问题说明": {
+            "required_columns": [
+              "sample_id",
+              "处理状态",
+              "影响字段"
+            ],
+            "row_assertions": [
+              {
+                "sample_id": "LAB-2",
+                "处理状态": "需处理",
+                "影响字段": "concentration"
+              }
+            ],
+            "min_rows": 1
+          }
+        }
+      }
+    },
+    {
+      "task_id": "monthly_sales_trend",
+      "domain": "finance",
+      "description": "A trend request must deliver the trend. Returning only the detail rows answers a different question — 按 month 分析 asks for one row per month.",
+      "goal": "按 month 分析 sales 销售趋势，生成一张折线图和简要报告",
+      "goal_variants": [
+        "请按 month 分析 sales 的销售趋势，并生成折线图和简要报告",
+        "分析 sales 销售数据的 month 趋势，输出折线图和简短报告",
+        "按 month 汇总 sales 金额看趋势，需要一张折线图和简要报告",
+        "请对 sales 做月度趋势分析，以 month 为维度生成折线图和报告",
+        "sales 按 month 分析销售变化，交付折线图与简要说明",
+        "查看 sales 的 month 销售趋势，并输出折线图及简要报告",
+        "请按 month 统计并分析 sales 趋势，生成一张线形图和简短报告",
+        "对 sales 按 month 做趋势分析，结果要包含折线图和简要报告",
+        "分析 sales 每个 month 的销售走势，输出折线图和报告",
+        "请生成 sales 的 month 趋势汇总、折线图以及简要报告",
+        "sales 销售额按 month 看趋势，请给出折线图和简短分析报告",
+        "按 month 展示 sales 销售趋势，需要折线图与简要报告",
+        "请分析 sales 的月度变化，字段使用 month，并生成折线图和报告",
+        "以 month 为时间维度分析 sales，输出销售趋势折线图和简报",
+        "sales 趋势分析按 month 展开，同时生成线图和简要报告",
+        "请把 sales 按 month 做趋势统计，交付折线图与简短报告",
+        "查看 sales 每月走势，按 month 汇总并生成折线图和报告",
+        "对 sales 的 month 销售数据做趋势图，并附简要报告",
+        "按 month 分析 sales 销售金额变化，输出折线图和简报"
+      ],
+      "llm_variant_indexes": [3, 6, 7, 8, 11, 13, 14, 15, 16, 19, 20],
+      "tags": ["paraphrase", "aggregation", "time_series", "chart", "report"],
+      "tables": {
+        "sales": {
+          "sale_id": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ],
+          "month": [
+            "2026-01-01",
+            "2026-02-01",
+            "2026-03-01",
+            "2026-04-01"
+          ],
+          "amount": [
+            100,
+            160,
+            140,
+            220
+          ]
+        }
+      },
+      "expectations": {
+        "task_actions": [
+          "analyze",
+          "chart",
+          "export"
+        ],
+        "capabilities": [
+          "read_tables",
+          "aggregate",
+          "generate_chart",
+          "export_table",
+          "export_report"
+        ],
+        "sheets": [
+          "处理结果",
+          "汇总结果"
+        ],
+        "charts": [
+          "time_trend"
+        ],
+        "report_enabled": true,
+        "max_clarification_slots": 0,
+        "counts": {
+          "total": 4,
+          "valid": 4,
+          "abnormal": 0
+        },
+        "required_columns": [
+          "month",
+          "amount"
+        ],
+        "forbidden_columns": [
+          "处理状态",
+          "问题类型",
+          "建议处理",
+          "源行号",
+          "影响字段",
+          "当前值"
+        ],
+        "row_assertions": [
+          {
+            "sale_id": "T4",
+            "amount": "220"
+          }
+        ]
+      }
+    },
+    {
+      "task_id": "customer_text_normalization",
+      "domain": "customer_operations",
+      "description": "Safe text cleaning must change the delivered cell value, and — because this goal asks for it — account for the change in 本次改动. A goal that does not ask gets the result sheet alone.",
+      "goal": "清洗 customers 客户数据，去除 customer_name 前后空格和不可见字符，并列出本次改了什么",
+      "goal_variants": [
+        "请清洗 customers，去掉 customer_name 的首尾空格和不可见字符，并说明改动",
+        "清理 customers 客户表中 customer_name 前后空格与不可见字符，列出本次修改",
+        "对 customers 做文本清洗，customer_name 去除首尾空格和隐藏字符，并给改动清单",
+        "请整理 customers 的 customer_name，删除前后空格和不可见字符并列出改动",
+        "customers 客户名称需要清洗：去掉 customer_name 首尾空格及不可见字符，说明修改",
+        "清洗 customers 表，把 customer_name 两端空格和隐藏字符去除，并交付改动记录",
+        "请规范 customers.customer_name 的首尾空格与不可见字符，同时列出本次改动",
+        "对 customers 客户数据执行清洗，customer_name 去空格和不可见字符，输出修改说明",
+        "清理 customer_name 字段的前后空格及隐藏字符，数据表是 customers，并列出改了什么",
+        "请把 customers 中 customer_name 的首尾空白和不可见字符清掉，并给出改动清单",
+        "customers 文本清洗：customer_name 去前后空格、去隐藏字符，并说明本次修改",
+        "请处理 customers 客户名称，移除 customer_name 两端空格和不可见字符，列出变化",
+        "清洗 customers 的 customer_name 字段，删除首尾空格及隐藏字符，并记录改动",
+        "对 customers 做客户名称清理，去除空格和不可见字符后列出本次改了什么",
+        "请清洁 customers 数据，customer_name 需要 trim 并移除不可见字符，输出改动说明",
+        "customers 表的 customer_name 有多余空白和隐藏字符，请清洗并列出修改",
+        "去掉 customers.customer_name 前后空格与不可见字符，清洗后给出改动记录",
+        "请清洗客户表 customers 的名称字段 customer_name，并说明所有本次改动",
+        "整理 customers，清除 customer_name 首尾空格和不可见字符，并列出变更"
+      ],
+      "llm_variant_indexes": [3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20],
+      "tags": ["paraphrase", "clean", "text", "change_manifest", "explicit_mutation"],
+      "tables": {
+        "customers": {
+          "customer_id": [
+            "C1",
+            "C2"
+          ],
+          "customer_name": [
+            "  Acme​  ",
+            "Globex"
+          ]
+        }
+      },
+      "expectations": {
+        "task_actions": [
+          "clean",
+          "export"
+        ],
+        "capabilities": [
+          "read_tables",
+          "detect_anomalies",
+          "export_table"
+        ],
+        "sheets": [
+          "处理结果",
+          "本次改动"
+        ],
+        "charts": [],
+        "report_enabled": false,
+        "max_clarification_slots": 0,
+        "counts": {
+          "total": 2,
+          "valid": 2,
+          "abnormal": 0
+        },
+        "required_columns": [
+          "customer_id",
+          "customer_name"
+        ],
+        "forbidden_columns": [
+          "处理状态",
+          "问题类型",
+          "建议处理",
+          "源行号",
+          "影响字段",
+          "当前值"
+        ],
+        "row_assertions": [
+          {
+            "customer_id": "C1",
+            "customer_name": "Acme"
+          }
+        ],
+        "forbidden_rows": [
+          {
+            "customer_name": "  Acme​  "
+          }
+        ]
+      }
+    },
+    {
+      "task_id": "text_numeric_city_total",
+      "domain": "finance",
+      "description": "Business numeric parsing must affect calculations without rewriting delivered detail cells.",
+      "goal": "按城市统计金额合计",
+      "tags": ["numeric_strings", "accounting_negative", "aggregation", "detail_preservation"],
+      "tables": {
+        "orders": {
+          "订单号": ["O1", "O2", "O3", "O4"],
+          "城市": ["北京", "上海", "北京", "上海"],
+          "金额": ["1,234", "(567)", "2,000", "800"]
+        }
+      },
+      "expectations": {
+        "task_actions": ["analyze", "export"],
+        "capabilities": ["aggregate", "export_table"],
+        "sheets": ["处理结果", "汇总结果"],
+        "sheet_expectations": {
+          "处理结果": {
+            "exact_columns": ["订单号", "城市", "金额"],
+            "row_assertions": [{"订单号": "O1", "金额": "1,234"}],
+            "exact_rows": 4
+          },
+          "汇总结果": {
+            "exact_columns": ["城市", "金额合计"],
+            "row_assertions": [
+              {"城市": "北京", "金额合计": 3234},
+              {"城市": "上海", "金额合计": 233}
+            ],
+            "exact_rows": 2
+          }
+        }
+      }
+    },
+    {
+      "task_id": "duplicate_annotation_preserves_rows",
+      "domain": "operations",
+      "description": "Annotation is not permission to deduplicate or filter records.",
+      "goal": "标记出重复的记录",
+      "tags": ["negative_operation", "deduplication", "row_preservation", "explicit_authorization"],
+      "tables": {
+        "records": {
+          "订单号": ["O1", "O2", "O2", "O3", "O4"],
+          "金额": [5000, 200, 200, -50, 8000]
+        }
+      },
+      "expectations": {
+        "forbidden_task_actions": ["deduplicate", "filter"],
+        "forbidden_capabilities": ["deduplicate", "filter_rows"],
+        "sheets": ["处理结果", "问题说明"],
+        "sheet_expectations": {
+          "处理结果": {
+            "required_columns": ["订单号", "金额"],
+            "exact_rows": 5
+          },
+          "问题说明": {
+            "required_columns": ["订单号", "处理状态", "影响字段"],
+            "row_assertions": [
+              {"订单号": "O2", "处理状态": "需处理", "影响字段": "订单号"}
+            ],
+            "min_rows": 2
+          }
+        }
+      }
+    },
+    {
+      "task_id": "delete_ratio_01",
+      "domain": "risk_boundary",
+      "description": "A stated deletion affecting one percent must delete exactly that one percent.",
+      "goal": "把金额低于0的记录删掉",
+      "tags": ["destructive", "delete_ratio_01", "confirmation", "exact_rows"],
+      "generated_tables": {
+        "records": {
+          "row_count": 100,
+          "columns": {
+            "记录号": {"kind": "sequence", "prefix": "R"},
+            "金额": {"kind": "split", "low_count": 1, "low": -1, "high": 1}
+          }
+        }
+      },
+      "expectations": {
+        "task_actions": ["filter", "export"],
+        "capabilities": ["filter_rows", "export_table"],
+        "sheets": ["处理结果"],
+        "sheet_expectations": {"处理结果": {"exact_rows": 99}}
+      }
+    },
+    {
+      "task_id": "delete_ratio_50",
+      "domain": "risk_boundary",
+      "description": "A stated deletion affecting half the file must preserve the other half exactly.",
+      "goal": "把金额低于0的记录删掉",
+      "tags": ["destructive", "delete_ratio_50", "confirmation", "exact_rows"],
+      "generated_tables": {
+        "records": {
+          "row_count": 100,
+          "columns": {
+            "记录号": {"kind": "sequence", "prefix": "R"},
+            "金额": {"kind": "split", "low_count": 50, "low": -1, "high": 1}
+          }
+        }
+      },
+      "expectations": {
+        "task_actions": ["filter", "export"],
+        "capabilities": ["filter_rows", "export_table"],
+        "sheets": ["处理结果"],
+        "sheet_expectations": {"处理结果": {"exact_rows": 50}}
+      }
+    },
+    {
+      "task_id": "delete_ratio_99",
+      "domain": "risk_boundary",
+      "description": "A stated deletion affecting nearly all rows must not retain any matching row.",
+      "goal": "把金额低于0的记录删掉",
+      "tags": ["destructive", "delete_ratio_99", "confirmation", "exact_rows"],
+      "generated_tables": {
+        "records": {
+          "row_count": 100,
+          "columns": {
+            "记录号": {"kind": "sequence", "prefix": "R"},
+            "金额": {"kind": "split", "low_count": 99, "low": -1, "high": 1}
+          }
+        }
+      },
+      "expectations": {
+        "task_actions": ["filter", "export"],
+        "capabilities": ["filter_rows", "export_table"],
+        "sheets": ["处理结果"],
+        "sheet_expectations": {"处理结果": {"exact_rows": 1}}
+      }
+    },
+    {
+      "task_id": "two_level_header_total",
+      "domain": "commerce",
+      "description": "A two-row business header must resolve to the real fields before aggregation.",
+      "goal": "统计每个客户的含税金额",
+      "tags": ["two_level_header", "merged_header", "aggregation", "excel_structure"],
+      "tables": {
+        "orders": {
+          "订单号": ["O1", "O2", "O3"],
+          "客户": ["张三", "李四", "张三"],
+          "不含税": [100, 200, 300],
+          "含税": [113, 226, 339]
+        }
+      },
+      "input_options": {
+        "orders": {
+          "file_format": "xlsx",
+          "header_rows": [
+            ["订单信息", "订单信息", "金额", "金额"],
+            ["订单号", "客户", "不含税", "含税"]
+          ]
+        }
+      },
+      "expectations": {
+        "task_actions": ["analyze", "export"],
+        "capabilities": ["aggregate", "export_table"],
+        "sheets": ["处理结果", "汇总结果"],
+        "sheet_expectations": {
+          "处理结果": {
+            "required_columns": ["客户", "含税"],
+            "exact_rows": 3
+          },
+          "汇总结果": {
+            "row_assertions": [{"客户": "张三", "含税合计": 452}],
+            "exact_rows": 2
+          }
+        }
+      }
+    },
+    {
+      "task_id": "monthly_union",
+      "domain": "sales_operations",
+      "description": "Two same-shaped files must be stacked without silently selecting one.",
+      "goal": "把两个月的销售数据合并成一张表",
+      "tags": ["union", "multi_file", "row_preservation", "exact_rows"],
+      "tables": {
+        "销售_1月": {"订单号": ["1月-1", "1月-2"], "金额": [100, 200]},
+        "销售_2月": {"订单号": ["2月-1", "2月-2"], "金额": [100, 200]}
+      },
+      "expectations": {
+        "capabilities": ["union_tables", "export_table"],
+        "sheets": ["处理结果"],
+        "sheet_expectations": {
+          "处理结果": {
+            "row_assertions": [{"订单号": "1月-1"}, {"订单号": "2月-1"}],
+            "exact_rows": 4
+          }
+        }
+      }
+    },
+    {
+      "task_id": "wide_to_long",
+      "domain": "planning",
+      "description": "A requested unpivot must preserve every source value and change the column contract.",
+      "goal": "把月份列转成行，做成长表",
+      "tags": ["reshape", "wide_to_long", "exact_columns", "row_multiplication"],
+      "tables": {
+        "月度销售": {
+          "客户": ["甲公司", "乙公司"],
+          "1月": [100, 200],
+          "2月": [110, 210],
+          "3月": [120, 220]
+        }
+      },
+      "expectations": {
+        "capabilities": ["reshape", "export_table"],
+        "sheets": ["处理结果"],
+        "sheet_expectations": {
+          "处理结果": {
+            "exact_columns": ["客户", "月份", "数值"],
+            "exact_rows": 6
+          }
+        }
+      }
+    },
+    {
+      "task_id": "city_month_crosstab",
+      "domain": "finance",
+      "description": "A crosstab request must lay values across columns and parse accounting negatives.",
+      "goal": "按城市和月份做交叉表，统计金额合计",
+      "tags": ["crosstab", "numeric_strings", "accounting_negative", "layout"],
+      "tables": {
+        "orders": {
+          "订单号": ["O1", "O2", "O3", "O4", "O5"],
+          "城市": ["北京", "北京", "上海", "上海", "广州"],
+          "月份": ["1月", "2月", "1月", "2月", "1月"],
+          "金额": ["1,000", "2000", "3000", "(500)", "700"]
+        }
+      },
+      "expectations": {
+        "task_actions": ["analyze", "export"],
+        "capabilities": ["aggregate", "export_table"],
+        "sheets": ["处理结果", "汇总结果"],
+        "sheet_expectations": {
+          "处理结果": {"exact_rows": 5},
+          "汇总结果": {
+            "exact_columns": ["城市", "1月", "2月"],
+            "row_assertions": [{"城市": "上海", "2月": -500}],
+            "exact_rows": 3
+          }
+        }
+      }
+    },
+    {
+      "task_id": "formula_injection_literal",
+      "domain": "security",
+      "description": "Spreadsheet formula-like input must remain literal data in the exported workbook.",
+      "goal": "原样输出 orders，不要修改数据",
+      "tags": ["formula_injection", "security", "negative_operation", "literal_preservation"],
+      "tables": {
+        "orders": {
+          "订单号": ["O1", "O2"],
+          "备注": ["=2+2", "+SUM(1,2)"]
+        }
+      },
+      "expectations": {
+        "forbidden_task_actions": ["clean", "filter", "deduplicate"],
+        "forbidden_capabilities": ["filter_rows", "deduplicate"],
+        "sheets": ["处理结果"],
+        "sheet_expectations": {
+          "处理结果": {
+            "exact_columns": ["订单号", "备注"],
+            "exact_rows": 2
+          }
+        }
+      }
+    }
+  ]
+}

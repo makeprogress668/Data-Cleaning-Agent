@@ -1,0 +1,125 @@
+{
+  "_说明": [
+    "每个 expect 里的数字，都是你先在纸上算出来、再写进来的。",
+    "所有 expect 键都可省略；只写你真正在意的那几条。",
+    "rows_unchanged   交付行数必须等于输入行数（本组不许增删记录）",
+    "delivered_rows   交付行数的精确值",
+    "summary_rows     汇总表行数；写 null 表示本组不该有汇总表",
+    "summary_contains 汇总表里必须出现的行（按文本比对，2500 与 2500.0 视为相同）",
+    "result_contains  处理结果里必须出现的行",
+    "columns_present  必须保留的列（比如用户自己的备注列）",
+    "columns_absent   不该出现的列",
+    "asks_clarification  存在歧义时应当先发问，而不是自己选一个"
+  ],
+  "data_dir": "../data/acceptance",
+  "cases": [
+    {
+      "name": "A_歧义字段_两个城市列",
+      "note": "发货城市和客户城市都能叫「城市」。选错会得到一张看起来完全合理、但答的是另一个问题的汇总表。",
+      "files": ["A_歧义字段.xlsx"],
+      "goal": "按城市统计金额合计",
+      "requires_llm": true,
+      "expect": {
+        "rows_unchanged": true,
+        "asks_clarification": true
+      }
+    },
+    {
+      "name": "B_双层表头",
+      "note": "第一行是合并的大类，第二行才是字段名。表头认错，后面全错。",
+      "files": ["B_双层表头.xlsx"],
+      "goal": "统计每个客户的含税金额",
+      "expect": {
+        "columns_present": ["客户", "含税"],
+        "summary_rows": 2,
+        "summary_contains": [{ "客户": "张三", "含税合计": 452 }]
+      }
+    },
+    {
+      "name": "C_文本数字_汇总会算成0",
+      "note": "金额存成了文本：1,234 / (567) 会计负数 / 2,000。汇总表照常产出，数字却全是 0，没有任何提示——比少给几行更危险，因为 0 看起来就是个正常答案。北京应为 3234，上海应为 233。",
+      "files": ["C_文本数字.xlsx"],
+      "goal": "按城市统计金额合计",
+      "expect": {
+        "rows_unchanged": true,
+        "summary_rows": 2,
+        "summary_contains": [
+          { "城市": "北京", "金额合计": 3234 },
+          { "城市": "上海", "金额合计": 233 }
+        ]
+      }
+    },
+    {
+      "name": "C2_无分组维度_不出汇总",
+      "note": "「统计金额合计」没说按什么分组，期望的答案是一个总数。现在只把明细表原样交回，用户的问题没被回答。比文本数字那条轻，但同样是问了没答。",
+      "files": ["C_文本数字.xlsx"],
+      "goal": "统计所有订单的金额总和",
+      "expect": { "summary_rows": 1 }
+    },
+    {
+      "name": "D_纵向合并_两个月",
+      "note": "最危险的一类：只交付其中一个月，用户不会发现少了一半。",
+      "files": ["D_销售_1月.xlsx", "D_销售_2月.xlsx"],
+      "goal": "把两个月的销售数据合并成一张表",
+      "expect": {
+        "delivered_rows": 4,
+        "result_contains": [{ "订单号": "1月-1" }, { "订单号": "2月-1" }]
+      }
+    },
+    {
+      "name": "E_一对多_关联后重复计算",
+      "note": "主表的总额被复制到每条明细上：O1 的 300 出现两次，SUM 会得到 800 而不是 500。",
+      "files": ["E_订单主表.xlsx", "E_订单明细.xlsx"],
+      "goal": "把客户名称关联到订单明细上",
+      "requires_llm": true,
+      "expect": {
+        "delivered_rows": 3,
+        "columns_present": ["客户"],
+        "columns_absent": ["总额"]
+      }
+    },
+    {
+      "name": "F_授权_看看是筛选视图",
+      "note": "已定的产品口径：「看看金额低于0的订单」交付一张只含这些订单的结果表，原表不动。这不是删除——它答的正是用户问的那个问题。同一份数据下的对照组是「标记出重复的记录」，那一组必须保留全部 5 行，因为标记是加一列。两组一起看，才说明「筛选视图」和「改动数据」被分开了。",
+      "files": ["F_授权边界.xlsx"],
+      "goal": "看看金额低于0的订单",
+      "requires_llm": true,
+      "expect": {
+        "delivered_rows": 1,
+        "result_contains": [{ "订单号": "O3" }]
+      }
+    },
+    {
+      "name": "F_授权_标记不该删",
+      "note": "标记是加一列，不是删行。",
+      "files": ["F_授权边界.xlsx"],
+      "goal": "标记出重复的记录",
+      "expect": { "rows_unchanged": true }
+    },
+    {
+      "name": "F_授权_统计不该删",
+      "note": "问「有多少重复」是统计，不是让你去重。",
+      "files": ["F_授权边界.xlsx"],
+      "goal": "统计一下有多少重复记录",
+      "expect": { "rows_unchanged": true }
+    },
+    {
+      "name": "F_授权_明说删要执行",
+      "note": "明确指令必须照做，而且不该再问一遍。5 行里 O3 金额为 -50，删后剩 4 行。",
+      "files": ["F_授权边界.xlsx"],
+      "goal": "把金额低于0的删掉",
+      "expect": {
+        "delivered_rows": 4,
+        "asks_clarification": false
+      }
+    },
+    {
+      "name": "F_授权_口语化去重要执行",
+      "note": "「清理掉」不在动词表里。模型引得出原话就该执行：O2 重复一次，去重后 4 行。",
+      "files": ["F_授权边界.xlsx"],
+      "goal": "把重复的记录清理掉",
+      "requires_llm": true,
+      "expect": { "delivered_rows": 4 }
+    }
+  ]
+}

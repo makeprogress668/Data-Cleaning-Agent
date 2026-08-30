@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data-cleaning-agent"
+version = "0.1.0"
+description = "A deterministic business data cleaning, analysis, and delivery agent."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "duckdb>=1.0.0",
+  "openpyxl>=3.1.0",
+  # Capped below 3.0 on purpose. pandas 3 changes missing-value semantics this
+  # codebase and its golden tests depend on (object-column ffill yields NaN instead
+  # of None, and bool & str stops coercing), which would silently alter exported
+  # cell values. Migrating is a deliberate task, not a version bump.
+  "pandas>=2.2.0,<3.0.0",
+  "pydantic>=2.7.0",
+  "pypdf>=4.0.0",
+  "python-dotenv>=1.0.0",
+  "rich>=13.7.0",
+  "typing-extensions>=4.8.0",
+  "typer>=0.12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "ruff>=0.5.0",
+]
+api = [
+  "fastapi>=0.111.0",
+  "httpx>=0.27.0",
+  "PyJWT[crypto]>=2.10.0,<3.0.0",
+  "python-multipart>=0.0.9",
+  "uvicorn[standard]>=0.30.0",
+]
+production = [
+  # Phase 3A durable metadata. Kept optional so local/file-mode installs do not
+  # carry a PostgreSQL driver they never use.
+  "psycopg[binary,pool]>=3.2.0,<4.0.0",
+  "arq>=0.26.0,<1.0.0",
+  "boto3>=1.35.0,<2.0.0",
+]
+
+[project.scripts]
+data-agent = "data_agent.cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+data_agent = ["evaluation/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["UP007", "UP045"]

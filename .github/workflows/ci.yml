@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is a first-class dev platform here: the job store does concurrent
+        # read/replace on status files, which only races under Windows file sharing.
+        #
+        # 3.10 is the floor pyproject's requires-python promises, and a promise no job
+        # exercises is not a promise. Only one runner needs to prove it — the rest of
+        # the matrix covers platform differences, not language versions.
+        include:
+          - os: ubuntu-latest
+            python: "3.10"
+          - os: ubuntu-latest
+            python: "3.12"
+          - os: windows-latest
+            python: "3.12"
+    defaults:
+      run:
+        working-directory: backend
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install backend (with dev + api extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,api]"
+      - name: Ruff lint
+        run: python -m ruff check src tests
+      - name: Pytest
+        run: python -m pytest tests -q
+
+      # The unit suite checks functions; this checks the workbook a user receives.
+      # It is the only guard against the failure shape that costs the most and shows
+      # the least — a delivery that looks entirely normal and is quietly wrong: a
+      # 金额 column of "1,234" summed as 0, two monthly files delivered as one.
+      # Runs at the deterministic floor, so it needs no API key and no network; the
+      # cases whose expected behaviour is the model's contribution are skipped.
+      - name: Acceptance matrix (deterministic floor)
+        working-directory: .
+        run: |
+          python scripts/make_acceptance_data.py data/acceptance
+          python scripts/run_acceptance_matrix.py scripts/acceptance_cases.json --no-llm
+
+      # 100-200 versioned user tasks exercise planning and then inspect the workbook,
+      # including negative-operation, destructive-ratio, structural Excel and formula
+      # safety cases. Model-only paraphrases are declared and reported as skipped here;
+      # release candidates run the same suite with --mode configured.
+      - name: Golden agent evaluation (deterministic floor)
+        working-directory: .
+        run: python scripts/run_golden_evaluation.py --output data/evaluation --run-id ci
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install dependencies
+        run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=moderate
+      - name: Build
+        run: npm run build

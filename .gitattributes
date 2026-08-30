@@ -1,0 +1,23 @@
+# 仓库内统一用 LF 存储和检出。
+#
+# 本机 core.autocrlf=true，若没有这份声明，在 Windows 上提交会把上百个文件整体改成
+# CRLF；其中 scripts/*.sh 会因为带 \r 而在 Linux 容器和 CI 里报 "bad interpreter"。
+# Python / Node / VSCode / PowerShell 在 Windows 上都能正常处理 LF，因此统一 LF 最省事。
+* text=auto eol=lf
+
+# Shell 脚本必须是 LF：backend 镜像和 GitHub Actions 都在 Linux 上执行它们。
+*.sh text eol=lf
+
+# 二进制文件不要做任何行尾转换，否则内容会被破坏。
+*.xlsx binary
+*.xls  binary
+*.zip  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.docx binary
+*.woff binary
+*.woff2 binary
