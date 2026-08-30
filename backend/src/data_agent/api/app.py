@@ -604,7 +604,11 @@ def _safe_file_name(file_name: str) -> str:
     control characters and the Windows-reserved punctuation — and keep the rest.
     """
 
-    path = Path(file_name)
+    # Upload metadata can contain a path from a different operating system
+    # (browsers commonly send Windows-style names to a Linux server).  Strip both
+    # separator styles explicitly instead of relying on the host's Path rules.
+    leaf_name = file_name.replace("\\", "/").rsplit("/", maxsplit=1)[-1]
+    path = Path(leaf_name)
     suffix = path.suffix.lower()
     stem = _UNSAFE_FILE_NAME_CHARS.sub("_", path.stem)
     # Leading dots hide the file; trailing dots/spaces are illegal on Windows.

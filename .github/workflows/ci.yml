@@ -9,6 +9,9 @@ jobs:
   backend:
     name: Backend (${{ matrix.os }}, py${{ matrix.python }})
     runs-on: ${{ matrix.os }}
+    env:
+      # GitHub's Windows shell may default to cp1252; all project output is Chinese.
+      PYTHONUTF8: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -30,8 +33,8 @@ jobs:
         working-directory: backend
         shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Install backend (with dev + api extras)
@@ -70,8 +73,8 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
       - name: Install dependencies
