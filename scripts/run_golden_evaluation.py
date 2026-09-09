@@ -10,7 +10,9 @@ SRC = ROOT / "backend" / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from data_agent.evaluation import (
+# Imported after the sys.path bootstrap above: that is what lets this script
+# run straight from a clone, without installing the package first.
+from data_agent.evaluation import (  # noqa: E402
     compare_replay_reports,
     load_golden_tasks,
     merge_golden_reports,

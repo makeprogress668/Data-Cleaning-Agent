@@ -14,7 +14,12 @@ SRC = ROOT / "backend" / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from data_agent.services import answer_input_paths, discover_input_paths
+# Imported after the sys.path bootstrap above: that is what lets this script
+# run straight from a clone, without installing the package first.
+from data_agent.services import (  # noqa: E402
+    answer_input_paths,
+    discover_input_paths,
+)
 
 DEMO_BASE_ROOT = ROOT / "data" / "demo"
 
@@ -298,7 +303,9 @@ def write_order_cleaning_rules(input_dir: Path) -> None:
 
 amount 必须 >= 0
 email 格式为邮箱
-导入字段: order_id, customer_id, customer_name, product_id, product_name, amount, status, email, target_system_code""",
+"""
+        "导入字段: order_id, customer_id, customer_name, product_id, "
+        "product_name, amount, status, email, target_system_code",
         encoding="utf-8",
     )
 
@@ -416,7 +423,9 @@ def write_supplier_rules(input_dir: Path) -> None:
 risk_score 必须 >= 0
 risk_score 必须 <= 100
 contact_email 格式为邮箱
-导入字段: supplier_id, supplier_name, country_code, country_name, risk_score, status, contact_email, erp_supplier_code""",
+"""
+        "导入字段: supplier_id, supplier_name, country_code, country_name, "
+        "risk_score, status, contact_email, erp_supplier_code",
         encoding="utf-8",
     )
 
@@ -540,7 +549,9 @@ def write_asset_rules(input_dir: Path) -> None:
 | purchase_date | date | 是 | | 采购日期 |
 
 purchase_amount 必须 >= 0
-导入字段: asset_id, employee_name, department, category_name, purchase_amount, asset_status, asset_system_code""",
+"""
+        "导入字段: asset_id, employee_name, department, category_name, "
+        "purchase_amount, asset_status, asset_system_code",
         encoding="utf-8",
     )
 

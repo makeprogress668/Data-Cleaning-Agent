@@ -41,8 +41,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,api]"
+      # ../scripts is in scope on purpose: the acceptance matrix and the golden
+      # evaluation below are driven by those files, so a syntax-level rot there
+      # breaks CI in a step that looks unrelated. CLAUDE.md documents the same
+      # three paths, and a documented check nothing runs is not a check.
       - name: Ruff lint
-        run: python -m ruff check src tests
+        run: python -m ruff check src tests ../scripts
       - name: Pytest
         run: python -m pytest tests -q
 
