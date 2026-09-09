@@ -1,82 +1,144 @@
-﻿# 本地开发一键启动：后端 API + 前端控制台。
-# 用法：powershell -ExecutionPolicy Bypass -File scripts\dev.ps1
+﻿# Local development launcher: backend API plus the web console, one command.
 #
-# 为什么需要这个脚本：
-# 只要 Windows 用户环境里存在 DATA_AGENT_API_KEY 或 DATA_AGENT_TENANT_API_KEYS_JSON，
-# 后端就会要求每个请求带 X-API-Key。前端从不发这个头，而且下载按钮是 <a download href>，
-# 浏览器的锚点无法携带请求头 —— 于是控制台整页 401，界面上还看不出原因。
-# 本地开发用不上租户鉴权，所以这里只清掉本进程（及其子进程）里的这两个变量，
-# 你保存在用户环境变量里的值原封不动。
+# Why it exists: this machine holds DATA_AGENT_API_KEY and
+# DATA_AGENT_TENANT_API_KEYS_JSON as user-level environment variables, because
+# docker compose cannot even parse its file without them. Every new terminal
+# inherits them, so a plain `uvicorn` run switches tenant authentication on. The
+# Vite dev server sends no X-API-Key, and the download buttons are
+# <a download href> anchors that cannot carry a header at all, so the console
+# 401s on every request with nothing on screen pointing at the cause. The
+# deployed stack is fine: nginx injects the header server-side.
+#
+# Blanking the two variables below therefore covers this process tree only. What
+# is stored in the user environment is left exactly as it was, so compose keeps
+# working, and a plain uvicorn run in any other terminal still authenticates.
 [CmdletBinding()]
 param(
-    [int]$ApiPort = 8000,
-    [int]$WebPort = 5173,
-    [switch]$NoWeb
+    [ValidateRange(1024, 65500)][int]$ApiPort = 8000,
+    [ValidateRange(1024, 65500)][int]$WebPort = 5173,
+    [switch]$NoWeb,
+    [switch]$NoBrowser,
+    [switch]$Stop
 )
 
 $ErrorActionPreference = "Stop"
-
-# 控制台按 UTF-8 输出，否则中文提示会显示为乱码。
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
 $RootDir = Split-Path -Parent $PSScriptRoot
-Set-Location $RootDir
+$RunDir = Join-Path $RootDir ".tmp\dev"
+$StatePath = Join-Path $RunDir "processes.json"
+
+function Stop-LocalServices {
+    if (-not (Test-Path -LiteralPath $StatePath)) { return }
+    $state = Get-Content -LiteralPath $StatePath -Raw | ConvertFrom-Json
+    foreach ($entry in $state) {
+        $process = Get-Process -Id $entry.id -ErrorAction SilentlyContinue
+        # PID reuse must never terminate an unrelated process.
+        if ($process -and $process.StartTime.ToUniversalTime().Ticks.ToString() -eq $entry.started) {
+            & taskkill.exe /PID $process.Id /T /F | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "停止进程失败：$($process.Id)" }
+        }
+    }
+    Remove-Item -LiteralPath $StatePath
+}
+
+function Find-FreePort([int]$Preferred) {
+    foreach ($candidate in $Preferred..($Preferred + 20)) {
+        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $candidate)
+        try { $listener.Start(); return $candidate }
+        catch [System.Net.Sockets.SocketException] { }
+        finally { $listener.Stop() }
+    }
+    throw "从 $Preferred 开始的端口均不可用，请关闭旧服务后重试。"
+}
+
+function Wait-Ready([string]$Url, $Process) {
+    $deadline = [DateTime]::UtcNow.AddSeconds(45)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        if ($Process.HasExited) { throw "服务启动后退出，请查看日志：$RunDir" }
+        try {
+            $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 2
+            if ($response.StatusCode -eq 200) { return }
+        } catch {
+            if ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 401) {
+                throw "接口鉴权仍未通过：$Url。请查看日志：$RunDir"
+            }
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    throw "服务未在 45 秒内就绪：$Url。请查看日志：$RunDir"
+}
+
+if ($Stop) {
+    Stop-LocalServices
+    Write-Output "本地启动器管理的前后端已停止。"
+    exit 0
+}
 
 $Python = Join-Path $RootDir "backend\.venv\Scripts\python.exe"
-if (-not (Test-Path $Python)) {
-    throw "找不到 $Python`n先建虚拟环境：python -m venv backend\.venv，再 pip install -e backend[dev,api]"
+$Vite = Join-Path $RootDir "apps\web\node_modules\vite\bin\vite.js"
+if (-not (Test-Path -LiteralPath $Python)) { throw "缺少后端虚拟环境，请按 README 安装后端依赖。" }
+if (-not $NoWeb) {
+    $Node = (Get-Command node.exe -ErrorAction Stop).Source
+    if (-not (Test-Path -LiteralPath $Vite)) { throw "缺少前端依赖，请在 apps\web 运行 npm.cmd install。" }
 }
 
-# 两个都要清：JSON 那个优先级更高，只清 DATA_AGENT_API_KEY 不起作用。
-$env:DATA_AGENT_API_KEY = $null
-$env:DATA_AGENT_TENANT_API_KEYS_JSON = $null
+New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
+Stop-LocalServices
+$ApiPort = Find-FreePort $ApiPort
+$WebPort = Find-FreePort $WebPort
+if ($WebPort -eq $ApiPort) { $WebPort = Find-FreePort ($WebPort + 1) }
+$ApiUrl = "http://127.0.0.1:$ApiPort"
+$WebUrl = "http://127.0.0.1:$WebPort"
 
-function Test-PortBusy([int]$Port) {
-    $listening = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
-    return $null -ne $listening
+# Whitespace survives Windows PowerShell 5.1 and blocks dotenv from restoring a
+# key. Authentication strips it to empty. LLM credentials remain available.
+$overrides = @{
+    DATA_AGENT_API_KEY = " "
+    DATA_AGENT_TENANT_API_KEYS_JSON = " "
+    VITE_API_BASE_URL = $ApiUrl
 }
+$saved = @{}
+$started = @()
+try {
+    foreach ($name in $overrides.Keys) {
+        $saved[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
+        [Environment]::SetEnvironmentVariable($name, $overrides[$name], "Process")
+    }
+    Write-Output "正在启动本地后端：$ApiUrl（仅本机访问）"
+    $api = Start-Process -FilePath $Python -ArgumentList @(
+        "-m", "uvicorn", "data_agent.api:app", "--host", "127.0.0.1", "--port", "$ApiPort"
+    ) -WorkingDirectory $RootDir -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput (Join-Path $RunDir "api.out.log") `
+        -RedirectStandardError (Join-Path $RunDir "api.err.log")
+    $started += @{ id = $api.Id; started = $api.StartTime.ToUniversalTime().Ticks.ToString() }
+    ConvertTo-Json -InputObject @($started) | Set-Content -LiteralPath $StatePath -Encoding UTF8
+    # Health alone is insufficient: it intentionally bypasses authentication.
+    Wait-Ready "$ApiUrl/api/v1/config" $api
+    Wait-Ready "$ApiUrl/api/v1/recipes" $api
+    Wait-Ready "$ApiUrl/api/v1/semantic-models" $api
 
-if (Test-PortBusy $ApiPort) {
-    throw "$ApiPort 端口已被占用。先停掉占用它的进程，或加 -ApiPort 换一个端口。"
-}
-
-Write-Output "==> 启动后端 API（端口 $ApiPort，已关闭租户鉴权）"
-$apiArgs = @(
-    "-m", "uvicorn", "data_agent.api:app",
-    "--host", "127.0.0.1", "--port", "$ApiPort", "--reload"
-)
-$api = Start-Process -FilePath $Python -ArgumentList $apiArgs -WorkingDirectory $RootDir -PassThru
-
-# 等健康检查通过再起前端，否则前端首屏会先撞上一次连接失败。
-$healthy = $false
-foreach ($attempt in 1..30) {
-    Start-Sleep -Seconds 1
-    try {
-        $response = Invoke-WebRequest -Uri "http://127.0.0.1:$ApiPort/health" -UseBasicParsing -TimeoutSec 3
-        if ($response.StatusCode -eq 200) { $healthy = $true; break }
-    } catch {
-        # 还没起来，继续等。
+    if (-not $NoWeb) {
+        Write-Output "正在启动前端：$WebUrl"
+        $web = Start-Process -FilePath $Node -ArgumentList @(
+            ('"' + $Vite + '"'), "--host", "127.0.0.1", "--port", "$WebPort", "--strictPort"
+        ) -WorkingDirectory (Join-Path $RootDir "apps\web") -WindowStyle Hidden -PassThru `
+            -RedirectStandardOutput (Join-Path $RunDir "web.out.log") `
+            -RedirectStandardError (Join-Path $RunDir "web.err.log")
+        $started += @{ id = $web.Id; started = $web.StartTime.ToUniversalTime().Ticks.ToString() }
+        ConvertTo-Json -InputObject @($started) | Set-Content -LiteralPath $StatePath -Encoding UTF8
+        Wait-Ready "$WebUrl/" $web
+        Wait-Ready "$WebUrl/api/v1/config" $web
+        Write-Output "启动成功，请打开：$WebUrl"
+        if (-not $NoBrowser) { Start-Process $WebUrl }
+    } else {
+        Write-Output "后端启动成功：$ApiUrl"
+    }
+    Write-Output "停止服务：双击 stop-local.cmd。日志：$RunDir"
+} catch {
+    Stop-LocalServices
+    throw
+} finally {
+    foreach ($name in $saved.Keys) {
+        [Environment]::SetEnvironmentVariable($name, $saved[$name], "Process")
     }
 }
-if (-not $healthy) {
-    throw "后端 30 秒内没有就绪，看一眼它自己那个窗口里的报错。"
-}
-Write-Output "    就绪：http://127.0.0.1:$ApiPort/docs"
-
-if ($NoWeb) {
-    Write-Output ""
-    Write-Output "只起了后端。停止：taskkill /PID $($api.Id) /T /F"
-    return
-}
-
-if (-not (Test-Path (Join-Path $RootDir "apps\web\node_modules"))) {
-    throw "前端依赖没装。先执行：cd apps\web 然后 npm install"
-}
-
-Write-Output "==> 启动前端控制台（端口 $WebPort）"
-$web = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "npm run dev" `
-    -WorkingDirectory (Join-Path $RootDir "apps\web") -PassThru
-
-Write-Output ""
-Write-Output "控制台：http://localhost:$WebPort"
-Write-Output "停止：taskkill /PID $($api.Id) /T /F  以及关掉前端那个窗口"

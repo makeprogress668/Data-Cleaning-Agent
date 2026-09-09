@@ -248,6 +248,14 @@ data-agent answer ..\data\input `
 <details>
 <summary><b>启动 Web 控制台</b></summary>
 
+Windows 本机使用：双击仓库根目录的 `start-local.cmd`，前后端就绪后自动打开网页。
+也可以在项目根目录运行 `.\start-local.cmd`；停止时运行 `.\stop-local.cmd`。
+启动器仅在子进程中屏蔽 API Key 鉴权，不修改系统环境变量、`.env` 或大模型 Key；
+仅监听 `127.0.0.1`。端口被旧服务占用时自动选择附近空闲端口，以启动器打开的地址为准。
+再次运行会重启启动器自己管理的服务，日志位于 `.tmp/dev/`。此入口仅供本机使用。
+
+分别启动前后端（如果配置了 API 鉴权，还需由访问端提供凭据）：
+
 ```powershell
 # 终端 1：后端
 cd backend
