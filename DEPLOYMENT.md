@@ -30,9 +30,13 @@ proxy 完成登录并向每个请求注入 Bearer token，内置 nginx 会原样
 ```powershell
 # 1. 准备环境变量（生产务必修改密钥与来源白名单）
 Copy-Item .env.example .env
-#    至少设置：DATA_AGENT_API_KEY（或 OIDC 三项）、DATA_AGENT_DATABASE_PASSWORD、
-#              DATA_AGENT_ARTIFACT_SECRET、
-#              DATA_AGENT_CORS_ORIGINS
+#    .env.example 里的密钥全部是注释掉的，需要先取消注释再填强值：
+#      DATA_AGENT_API_KEY            对外鉴权，也可改用 OIDC 三项
+#      DATA_AGENT_DATABASE_PASSWORD  PostgreSQL
+#      DATA_AGENT_ARTIFACT_SECRET    MinIO，要和上面那个不同
+#    另外把 DATA_AGENT_CORS_ORIGINS 收敛为真实前端域名。
+#    漏了不会静默生效：前两个由 compose 的 ${VAR:?} 拦下，
+#    API Key 由 DATA_AGENT_ENV=production 在启动阶段拦下。
 
 # 2. 构建并启动
 docker compose up -d --build
@@ -232,9 +236,9 @@ docker run -d --name data-agent-web `
 
 ## 八、上线前检查清单
 
-- [ ] 已设置强 `DATA_AGENT_API_KEY`，或 OIDC issuer/audience/JWKS 与 claim 映射
-- [ ] 已设置强 `DATA_AGENT_DATABASE_PASSWORD`，PostgreSQL 健康检查通过
-- [ ] 已设置不同的强 `DATA_AGENT_ARTIFACT_SECRET`，MinIO bucket 初始化成功
+- [ ] 已在 `.env` 中取消注释并设置强 `DATA_AGENT_API_KEY`，或 OIDC issuer/audience/JWKS 与 claim 映射
+- [ ] 已取消注释并设置强 `DATA_AGENT_DATABASE_PASSWORD`，PostgreSQL 健康检查通过
+- [ ] 已取消注释并设置不同的强 `DATA_AGENT_ARTIFACT_SECRET`，MinIO bucket 初始化成功
 - [ ] `DATA_AGENT_CORS_ORIGINS` 收敛为真实前端域名（非 `*`）
 - [ ] 前置网关终止 HTTPS，转发 `X-Forwarded-*`
 - [ ] `DATA_AGENT_MAX_UPLOAD_BYTES` 与 nginx `client_max_body_size` 一致
